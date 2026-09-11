@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spider Solitaire</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="fc-wrap">
+    <div class="fc-page sp-page">
+      <div class="fc-frame">
+        <div class="sp-table fc-table" id="sp-table"></div>
+        <div class="sp-bar">
+          <div class="sp-done" id="sp-done"></div>
+          <div class="sp-stock" id="sp-stock"></div>
+        </div>
+        <div id="fc-timer" class="fc-timer">0s</div>
+        <div class="fc-foot">
+          <button id="btn-fc-new" class="btn">重新开始</button>
+          <button id="btn-fc-undo" class="btn">撤销</button>
+          <button id="btn-fc-settings" class="btn">设置</button>
+          <button id="btn-fc-home" class="btn">返回主界面</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- 设置弹窗 -->
+  <div id="fc-settings-modal" class="modal hidden">
+    <div class="settings-page">
+      <button id="btn-fc-settings-back" class="start-join-btn" type="button">返回</button>
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="fc-settings-body">
+            <p class="fc-set-label">游戏设置(新局生效)</p>
+            <hr class="setting-divider">
+            <div class="setting-row sp-diff-row">
+              <span class="setting-label">难度</span>
+              <div class="sp-difficulty-switch" id="sp-difficulty">
+                <button type="button" class="switch-arrow" id="sp-diff-prev" aria-label="上一个难度"><img src="texture/lastchoice.png" alt="<"></button>
+                <span id="sp-diff-label" class="switch-label">单色</span>
+                <button type="button" class="switch-arrow" id="sp-diff-next" aria-label="下一个难度"><img src="texture/nextchoice.png" alt=">"></button>
+              </div>
+            </div>
+            <div id="sp-four-hint" class="sp-four-hint hidden">由于技术原因，您会有较大概率遇到无解的牌局</div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">允许撤销</span>
+              <button type="button" class="toggle" id="opt-undo"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">允许观战</span>
+              <button type="button" class="toggle" id="opt-allow-spec"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">设为开放</span>
+              <button type="button" class="toggle" id="opt-open"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">计时</span>
+              <button type="button" class="toggle" id="opt-timer"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">当前有 <span id="fc-spec-count">0</span> 人观战</span>
+            </div>
+            <p class="fc-set-label">界面设置(即时生效)</p>
+            <hr class="setting-divider">
+            <div class="setting-row slider-row">
+              <span class="setting-label">窗口缩放</span>
+              <span id="fc-win-scale-label" class="setting-value">100%</span>
+              <input id="fc-win-scale" type="range" min="40" max="200" step="5" value="100">
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">牌面透明</span>
+              <button type="button" class="toggle" id="opt-transparent"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">边框提示花色</span>
+              <button type="button" class="toggle" id="opt-suit-border"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">双色模式</span>
+              <button type="button" class="toggle" id="opt-two-color"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+          </div>
+          <div class="settings-scrollbar" id="fc-settings-scrollbar">
+            <div class="settings-scrollbar-thumb" id="fc-settings-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-fc-view-code" class="btn">查看房间码</button>
+          <button id="btn-fc-settings-apply" class="btn">应用</button>
+          <button id="btn-fc-settings-default" class="btn">设为默认</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 房间码（邀请码界面） -->
+  <div id="fc-code-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">房间码</div>
+        <div class="confirm-body">
+          <input id="fc-code-input" class="wait-id" type="text" readonly value="—">
+          <p class="confirm-text wait-tip">将你的房间码发送给对方</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-fc-copy-id" class="btn">复制房间码</button>
+          <button id="btn-fc-copy-link" class="btn">复制加入链接</button>
+          <button id="btn-fc-code-back" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 观战退出提示 -->
+  <div id="fc-exit-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">提示</div>
+        <div class="confirm-body">
+          <p id="fc-exit-text" class="confirm-text"></p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-fc-exit-ok" class="btn">返回主界面</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重新开始选择弹窗 -->
+  <div id="fc-restart-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">重新开始</div>
+        <div class="confirm-body">
+          <p class="confirm-text">开始新局（换一副新牌）<br>还是重玩这一局（同一副牌重来）？</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-fc-restart-new" class="btn">开始新局</button>
+          <button id="btn-fc-restart-replay" class="btn">重玩这一局</button>
+          <button id="btn-fc-restart-cancel" class="btn">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通关弹窗 -->
+  <div id="fc-win-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">恭喜通关！</div>
+        <div class="confirm-body">
+          <p id="fc-win-text" class="confirm-text">已将全部 8 组同花色牌组收起</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-fc-win-new" class="btn">重新开始</button>
+          <button id="btn-fc-win-home" class="btn">返回主界面</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/spider-solver.js"></script>
+  <script src="banks/spider_bank_two.js"></script>
+  <script src="js/spider.js"></script>
+  <!-- 消息提示层 -->
+  <div id="chat-layer" class="chat-layer"></div>
+
+</body>
+</html>
+

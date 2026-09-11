@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turn-Left Tool · 关卡制作器</title>
+  <link rel="stylesheet" href="css/turnleft-editor.css?v=20260907b">
+  <meta name="editor-ver" content="2q1">
+</head>
+<body class="editor-page">
+  <div class="game-layout">
+    <aside class="panel left">
+      <div class="controls">
+        <button id="btn-set" class="btn">创建关卡集</button>
+        <button id="btn-save" class="btn">保存关卡集(Ctrl+S)</button>
+        <button id="btn-batch" class="btn" disabled>批量验证可解性</button>
+        <button id="btn-prev" class="btn nav-level" disabled>上一个关卡<br><span class="kbd-hint">(Ctrl+A)</span></button>
+        <button id="btn-next" class="btn nav-level" disabled>下一个关卡<br><span class="kbd-hint">(Ctrl+D)</span></button>
+        <div class="controls-divider"></div>
+        <button id="btn-undo" class="btn" disabled>撤销(Ctrl+Z)</button>
+        <button id="btn-redo" class="btn" disabled>重做(Ctrl+Y)</button>
+        <button id="btn-clear" class="btn" disabled>清空(Shift+Z)</button>
+        <button id="btn-solve" class="btn" disabled>验证可解性</button>
+        <button id="btn-tasks" class="btn" disabled>编辑任务集</button>
+        <div class="controls-divider"></div>
+        <button id="btn-settings" class="btn">设置</button>
+        <button id="btn-back-ws" class="btn">返回</button>
+      </div>
+    </aside>
+
+    <main class="board-area">
+      <div class="level-name hidden" id="level-name"></div>
+      <div class="board-wrap" id="board-wrap">
+        <div class="workbench" id="workbench">
+          <div class="workbench-empty hidden" id="workbench-empty">制作台为空</div>
+          <div class="grid-view hidden" id="grid-view">
+            <div class="grid-canvas" id="grid-canvas"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel right">
+      <div class="controls toolbar" id="toolbar"></div>
+    </aside>
+  </div>
+
+  <!-- 关卡集管理（选房界面风格） -->
+  <div id="set-modal" class="modal hidden">
+    <div class="confirm-page">
+      <button id="set-back" class="start-join-btn" type="button">返回</button>
+      <button id="set-del" class="profile-btn" type="button">删除</button>
+      <button id="set-multi" class="profile-btn hidden" type="button">多选</button>
+      <div class="confirm-frame">
+        <div class="lobby-body" id="set-lobby">
+          <div id="set-list" class="open-rooms"></div>
+          <div id="set-empty" class="set-empty"></div>
+        </div>
+        <div class="tl-list-scrollbar" id="set-scrollbar"><div class="tl-list-scrollbar-thumb" id="set-scrollbar-thumb"></div></div>
+        <div class="confirm-foot">
+          <button id="set-add" class="btn">创建新关卡</button>
+          <button id="set-open" class="btn">打开</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用确认弹窗 -->
+  <div id="ask-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="ask-title">确认</div>
+        <div class="confirm-body" id="ask-text"></div>
+        <div class="confirm-foot">
+          <button id="ask-no" class="btn">取消</button>
+          <button id="ask-yes" class="btn">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 保存关卡集 -->
+  <div id="save-modal" class="modal hidden">
+    <div class="confirm-page">
+      <button id="btn-save-back" class="start-join-btn" type="button">返回</button>
+      <div class="confirm-frame">
+        <div class="confirm-title">保存关卡集</div>
+        <div class="confirm-body">
+          <div class="size-row">
+            <label class="size-label">文件名:</label>
+            <input id="save-name" class="num-input save-name-input" type="text" placeholder="请输入文件名">
+          </div>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-save-primary" class="btn">下载</button>
+          <button id="btn-save-as" class="btn">另存为</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 隐藏的文件选择：导入关卡 -->
+  <input type="file" id="file-import" accept=".json,application/json" style="display:none">
+
+  <!-- 验证结果 -->
+  <div id="solve-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">验证可解性</div>
+        <div class="confirm-body"><div id="solve-msg" class="solve-msg"></div></div>
+        <div class="confirm-foot">
+          <button id="btn-solve-back" class="btn">返回</button>
+          <button id="btn-solve-export" class="btn">导出解法</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 批量验证结果 -->
+  <div id="batch-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">批量验证</div>
+        <div class="confirm-body"><div id="batch-msg" class="solve-msg"></div></div>
+        <div class="confirm-foot">
+          <button id="btn-batch-back" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 导出解法（步数范围） -->
+  <div id="export-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">导出解法</div>
+        <div class="confirm-body">
+          <div class="size-row">
+            <label class="size-label">最小步数:</label>
+            <input id="exp-min" class="num-input" type="number" min="1" step="1">
+          </div>
+          <div class="size-row">
+            <label class="size-label">最大步数:</label>
+            <input id="exp-max" class="num-input" type="number" min="1" step="1">
+          </div>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-exp-cancel" class="btn">取消</button>
+          <button id="btn-exp-ok" class="btn">导出</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑任务：任务列表 -->
+  <div id="task-modal" class="modal hidden">
+    <div class="confirm-page">
+      <button id="task-back" class="start-join-btn" type="button">返回</button>
+      <button id="task-del" class="profile-btn" type="button">删除</button>
+      <div class="confirm-frame">
+        <div class="lobby-body" id="task-lobby">
+          <div id="task-list" class="open-rooms"></div>
+          <div id="task-empty" class="set-empty"></div>
+        </div>
+        <div class="tl-list-scrollbar" id="task-scrollbar"><div class="tl-list-scrollbar-thumb" id="task-scrollbar-thumb"></div></div>
+        <div class="confirm-foot">
+          <button id="task-add" class="btn">添加任务</button>
+          <button id="task-view" class="btn">查看详情</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑任务集：任务详情（参照 battle 开局设置样式，正常弹窗大小） -->
+  <div id="task-detail-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="task-detail-body"></div>
+        </div>
+        <div class="settings-foot">
+          <button id="task-detail-cancel" class="btn">取消</button>
+          <button id="task-detail-save" class="btn">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置（制作台缩放 / 面板缩放，同 cmchess） -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="settings-body">
+            <div class="setting-row slider-row">
+              <span class="setting-label">制作台缩放</span>
+              <span id="bench-scale-label" class="setting-value">100%</span>
+              <input id="bench-scale" type="range" min="50" max="200" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">面板缩放</span>
+              <span id="panel-scale-label" class="setting-value">100%</span>
+              <input id="panel-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">是否显示关卡名称</span>
+              <button type="button" class="toggle" id="opt-show-name"><img src="texture/toggleon.png" alt="on"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">是否不限制游玩顺序</span>
+              <button type="button" class="toggle" id="opt-unordered"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+          </div>
+          <div class="settings-scrollbar" id="settings-scrollbar">
+            <div class="settings-scrollbar-thumb" id="settings-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-settings-clear" class="btn">删除关卡集</button>
+          <button id="btn-settings-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 创建新关卡（网格大小） -->
+  <div id="new-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">创建新关卡</div>
+        <div class="confirm-body">
+          <div class="size-row">
+            <label class="size-label">宽:</label>
+            <input id="new-w" class="num-input" type="number" min="0" value="3">
+            <label class="size-label">× 高:</label>
+            <input id="new-h" class="num-input" type="number" min="0" value="3">
+          </div>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-new-cancel" class="btn">取消</button>
+          <button id="btn-new-ok" class="btn">创建</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/profile.js"></script>
+  <script src="js/turnleft-editor.js?v=20260907b"></script>
+</body>
+</html>

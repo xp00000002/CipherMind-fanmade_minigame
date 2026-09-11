@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>炸金花</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="zjh-page">
+  <div class="game-layout">
+    <aside class="panel left">
+      <div class="controls" id="zjh-controls">
+        <button id="btn-settings" class="btn">设置</button>
+        <button id="btn-records" class="btn">查看记录</button>
+        <button id="btn-chat" class="btn">发送消息</button>
+        <button id="btn-exit" class="btn btn-danger">认输并退出</button>
+        <button id="btn-spec-see" class="btn hidden">看牌</button>
+        <button id="btn-see" class="btn hidden">看牌</button>
+        <button id="btn-fold" class="btn hidden">弃牌</button>
+        <button id="btn-call" class="btn hidden">跟注</button>
+        <button id="btn-raise" class="btn hidden">加注</button>
+        <button id="btn-open" class="btn hidden">开牌</button>
+      </div>
+    </aside>
+
+    <main class="board-area">
+      <div class="board-wrap">
+        <div id="zjh-table" class="zjh-table">
+          <div class="zjh-seat" data-seat="1"></div>
+          <div class="zjh-seat" data-seat="2"></div>
+          <div class="zjh-seat" data-seat="3"></div>
+          <div class="zjh-seat" data-seat="4"></div>
+          <div class="zjh-seat" data-seat="5"></div>
+          <div class="zjh-seat" data-seat="6"></div>
+          <div class="zjh-seat" data-seat="7"></div>
+          <div class="zjh-seat" data-seat="8"></div>
+          <div id="zjh-pot-display"></div>
+          <div id="zjh-timer-display"></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel right">
+      <div class="zjh-player-list" id="zjh-player-panel"></div>
+    </aside>
+
+    <!-- 平板/手机端布局容器（按断点重组 DOM，PC 端隐藏） -->
+    <div class="top-panel"></div>
+    <div class="bottom-panel"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- 创建房间设置页 -->
+  <div id="zjh-create-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="zjh-settings-body">
+            <div class="setting-row toggle-row">
+              <span class="setting-label">235 可压 AAA</span>
+              <button type="button" class="toggle" id="zjh-opt-235"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">限时</span>
+              <button type="button" class="toggle" id="zjh-opt-timelimit"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">时间限制</span>
+              <input type="number" id="zjh-time-input" min="3" max="300" value="30" class="num-input">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">开局分数</span>
+              <input type="number" id="zjh-score-input" min="10" max="10000" value="1000" class="num-input">
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">庄家模式</span>
+              <button type="button" class="toggle" id="zjh-opt-dealer"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">显示剩余分数</span>
+              <button type="button" class="toggle" id="zjh-opt-scores"><img src="texture/toggleon.png" alt="on"></button>
+            </div>
+          </div>
+          <div class="settings-scrollbar" id="zjh-settings-scrollbar">
+            <div class="settings-scrollbar-thumb" id="zjh-settings-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-zjh-create-back" class="btn">返回</button>
+          <button id="btn-zjh-create" class="btn">创建房间</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 等待界面（房间成员） -->
+  <div id="zjh-wait-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="zjh-wait-head">
+        <button id="zjh-open-btn" class="start-join-btn" type="button">开放</button>
+        <div class="zjh-wait-right">
+          <button id="zjh-roomcode-btn" class="start-join-btn" type="button">房间号码</button>
+          <button id="zjh-copylink-btn" class="start-join-btn" type="button">复制邀请链接</button>
+        </div>
+      </div>
+      <div class="confirm-frame">
+        <div class="zjh-wait-body" id="zjh-wait-body"></div>
+        <div class="confirm-foot">
+          <button id="btn-zjh-wait-back" class="btn">返回</button>
+          <button id="btn-zjh-start" class="btn">开始游戏</button>
+          <button id="btn-zjh-ready" class="btn hidden">准备</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结算弹窗 -->
+  <div id="zjh-result-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">本局结束</div>
+        <div class="confirm-body">
+          <div id="zjh-result-text" class="confirm-text"></div>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-zjh-result-records" class="btn">查看记录</button>
+          <button id="btn-zjh-result-home" class="btn">返回主界面</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 发送消息 -->
+  <div id="chat-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">发送消息</div>
+        <div class="chat-body">
+          <div class="chat-players" id="chat-players"></div>
+          <div class="chat-right">
+            <div class="chat-preset">
+              <div id="zjh-chat-op-0" class="chat-options"></div>
+              <div id="zjh-chat-op-1" class="chat-options"></div>
+              <div id="zjh-chat-op-2" class="chat-options"></div>
+              <div id="zjh-chat-op-3" class="chat-options"></div>
+              <div id="zjh-chat-op-4" class="chat-options"></div>
+            </div>
+            <div class="chat-custom">
+              <input id="chat-input" class="join-input" type="text" placeholder="自定义消息（1-60字，中文算2字）" spellcheck="false" autocomplete="off" maxlength="120">
+            </div>
+          </div>
+        </div>
+        <div class="confirm-foot">
+          <button id="chat-cancel" class="btn">取消</button>
+          <button id="chat-send" class="btn">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 消息提示层 -->
+  <div id="chat-layer" class="chat-layer"></div>
+
+  <!-- 设置 -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="settings-body">
+            <div class="setting-row slider-row">
+              <span class="setting-label">牌桌缩放</span>
+              <span id="zjh-scale-label" class="setting-value">100%</span>
+              <input id="zjh-scale" type="range" min="40" max="200" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">面板缩放</span>
+              <span id="zjh-panel-scale-label" class="setting-value">100%</span>
+              <input id="zjh-panel-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">牌面透明</span>
+              <button type="button" class="toggle" id="zjh-opt-transparent"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">边框提示花色</span>
+              <button type="button" class="toggle" id="zjh-opt-suitborder"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">双色模式</span>
+              <button type="button" class="toggle" id="zjh-opt-twocolor"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+          </div>
+          <div class="settings-scrollbar" id="settings-scrollbar">
+            <div class="settings-scrollbar-thumb" id="settings-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-settings-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查看记录 -->
+  <div id="zjh-records-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="zjh-records-body"></div>
+          <div class="settings-scrollbar" id="zjh-records-scrollbar">
+            <div class="settings-scrollbar-thumb" id="zjh-records-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-zjh-records-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用确认框 -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="confirm-title">提示</div>
+        <div class="confirm-body">
+          <p id="confirm-text" class="confirm-text"></p>
+        </div>
+        <div class="confirm-foot">
+          <button id="confirm-yes" class="btn">确定</button>
+          <button id="confirm-no" class="btn">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/zjh.js"></script>
+</body>
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>国际象棋 · 对局</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="game-layout">
+    <aside class="panel left">
+      <div class="player-card" id="player-top"></div>
+      <div class="status-box">
+        <div id="status" class="status">准备中…</div>
+      </div>
+      <div class="controls">
+        <button id="btn-undo" class="btn">悔棋</button>
+        <button id="btn-draw" class="btn">求和</button>
+        <button id="btn-rematch" class="btn">再来一局</button>
+        <button id="btn-resign" class="btn btn-danger">认输</button>
+        <button id="btn-settings" class="btn">设置</button>
+      </div>
+      <div class="conn-line">
+        <span id="conn-state-label" class="conn-state-label">连接状态：</span>
+        <span id="conn-state" class="conn-state">初始化…</span>
+        <span id="spec-count" class="spec-count hidden"></span>
+      </div>
+    </aside>
+
+    <main class="board-area">
+      <div class="board-wrap">
+        <div id="board" class="board"></div>
+      </div>
+    </main>
+
+    <aside class="panel right">
+      <div class="player-card" id="player-bottom"></div>
+      <div class="moves-box">
+        <div class="moves-head">
+          <h3>棋谱</h3>
+          <button id="btn-back-current" class="btn btn-sm hidden">回到当前</button>
+        </div>
+        <div id="moves" class="moves"></div>
+      </div>
+      <button id="btn-copy-moves" class="btn hidden">复制棋谱</button>
+      <button id="btn-chat" class="btn">发送消息</button>
+      <button id="btn-home" class="btn hidden">返回主界面</button>
+    </aside>
+
+    <!-- 平板端布局容器（JS 按断点重组 DOM，PC/手机端隐藏） -->
+    <div class="top-panel"></div>
+    <div class="bottom-panel">
+      <div class="bottom-right"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- 消息提示层（右上角，新消息在上） -->
+  <div id="chat-layer" class="chat-layer"></div>
+
+  <!-- 发送消息 -->
+  <div id="chat-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">发送消息</div>
+        <div class="chat-body">
+          <div class="chat-players" id="chat-players"></div>
+          <div class="chat-right">
+            <div class="chat-preset">
+              <div id="chat-op-theme" class="chat-options"></div>
+              <div id="chat-op-2" class="chat-options"></div>
+              <div id="chat-op-3" class="chat-options"></div>
+              <div id="chat-op-4" class="chat-options"></div>
+              <div id="chat-op-5" class="chat-options"></div>
+            </div>
+            <div class="chat-custom">
+              <input id="chat-input" class="join-input" type="text" placeholder="自定义消息（1-60字，中文算2字）" spellcheck="false" autocomplete="off" maxlength="120">
+            </div>
+          </div>
+        </div>
+        <div class="confirm-foot">
+          <button id="chat-cancel" class="btn">取消</button>
+          <button id="chat-send" class="btn">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 等待对手加入 -->
+  <div id="wait-modal" class="modal hidden">
+    <div class="confirm-page">
+      <button id="btn-wait-back" class="start-join-btn" type="button">返回</button>
+      <div class="confirm-frame">
+        <div class="confirm-title">等待对手加入</div>
+        <div class="confirm-body">
+          <input id="peer-id-modal" class="wait-id" type="text" readonly value="—">
+          <p class="confirm-text wait-tip">将你的房间号发送给对方</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-copy-id" class="btn">复制房间号</button>
+          <button id="btn-copy-link" class="btn">复制加入链接</button>
+          <button id="btn-rules" class="btn">规则设置</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 规则设置（房主设置，开局前生效） -->
+  <div id="rules-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="rules-body">
+            <div class="setting-row toggle-row">
+              <span class="setting-label">限制每步时间</span>
+              <button type="button" class="toggle" id="rule-time-limit"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">每步时间（秒）</span>
+              <input type="number" id="rule-time-sec" min="3" max="3600" value="30" class="num-input">
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">禁用王车易位</span>
+              <button type="button" class="toggle" id="rule-no-castle"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">禁用底线升变</span>
+              <button type="button" class="toggle" id="rule-no-promo"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">禁用悔棋</span>
+              <button type="button" class="toggle" id="rule-no-undo"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">将房间设为开放</span>
+              <button type="button" class="toggle" id="rule-open"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">允许观战</span>
+              <button type="button" class="toggle" id="rule-allow-spec"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">禁用发送消息</span>
+              <button type="button" class="toggle" id="rule-no-chat"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">允许私聊</span>
+              <button type="button" class="toggle" id="rule-private-chat"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+          </div>
+          <div class="settings-scrollbar" id="rules-scrollbar">
+            <div class="settings-scrollbar-thumb" id="rules-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-rules-apply" class="btn">应用</button>
+          <button id="btn-rules-close" class="btn">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 升变选择（提示类弹窗） -->
+  <div id="promo-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">选择升变棋子</div>
+        <div class="confirm-body">
+          <div id="promo-options" class="promo-options"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用确认框（提示弹窗） -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="confirm-title">提示</div>
+        <div class="confirm-body">
+          <p id="confirm-text" class="confirm-text">确定吗？</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="confirm-yes" class="btn">确定</button>
+          <button id="confirm-no" class="btn">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="settings-body">
+            <div class="setting-row slider-row">
+              <span class="setting-label">棋盘大小</span>
+              <span id="board-scale-label" class="setting-value">100%</span>
+              <input id="board-scale" type="range" min="40" max="200" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">面板缩放</span>
+              <span id="panel-scale-label" class="setting-value">100%</span>
+              <input id="panel-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <hr class="setting-divider">
+            <div class="setting-row toggle-row">
+              <span class="setting-label">反转棋盘朝向</span>
+              <button type="button" class="toggle" id="opt-flip"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">显示可走点</span>
+              <button type="button" class="toggle" id="opt-moves"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">隐藏消息提示</span>
+              <button type="button" class="toggle" id="opt-hide-chat"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">显示上一步路径</span>
+              <button type="button" class="toggle" id="opt-lastmove"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">显示行列坐标</span>
+              <button type="button" class="toggle" id="opt-coords"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+          <div class="setting-row toggle-row">
+            <span class="setting-label" id="opt-oppmoves-label">显示对方选子</span>
+            <button type="button" class="toggle" id="opt-oppmoves"><img src="texture/toggleoff.png" alt="off"></button>
+          </div>
+          <div class="setting-row toggle-row">
+            <span class="setting-label">显示子力分领先</span>
+            <button type="button" class="toggle" id="opt-material"><img src="texture/toggleoff.png" alt="off"></button>
+          </div>
+          <div class="setting-row nickname-row">
+            <span class="setting-label">昵称</span>
+            <input id="game-nickname" class="profile-input" type="text" maxlength="20" placeholder="Player">
+          </div>
+          </div>
+          <div class="settings-scrollbar" id="settings-scrollbar">
+            <div class="settings-scrollbar-thumb" id="settings-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-scale-reset" class="btn">恢复默认</button>
+          <button id="btn-nickname-save" class="btn">保存昵称</button>
+          <button id="btn-settings-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="js/chess.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battle · 斗地主</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="battle-page">
+  <!-- 记牌器（页面上方固定条；Z / "显示记牌器(Z)"显示，X / "隐藏记牌器(X)"隐藏；观战者看牌后切换为看牌条） -->
+  <div id="bt-counter" class="bt-counter hidden">
+    <div class="bt-counter-frame" id="bt-counter-frame">
+      <span class="bt-counter-title">记牌器</span>
+      <div id="bt-counter-ranks" class="bt-counter-ranks"></div>
+    </div>
+    <!-- 观战者看牌条：左右切换玩家（样式同记牌器，字号/尺寸遵循记牌器大小设置） -->
+    <div class="bt-counter-frame hidden" id="bt-spec-panel">
+      <div class="bt-spec-head">
+        <button type="button" class="switch-arrow" id="bt-spec-prev" aria-label="上一个玩家"><img src="texture/lastchoice.png" alt="<"></button>
+        <div class="bt-spec-title">
+          <span id="bt-spec-name" class="switch-label"></span>
+          <span id="bt-spec-cnt" class="bt-spec-cnt"></span>
+        </div>
+        <button type="button" class="switch-arrow" id="bt-spec-next" aria-label="下一个玩家"><img src="texture/nextchoice.png" alt=">"></button>
+      </div>
+      <div id="bt-spec-cards" class="bt-spec-cards"></div>
+    </div>
+  </div>
+
+  <div class="game-layout">
+    <aside class="panel left">
+      <div class="status-box">
+        <div id="bt-status" class="status">准备中…</div>
+        <div id="bt-status-mult" class="status bt-status-mult"></div>
+      </div>
+      <div class="controls" id="bt-controls">
+        <button id="btn-bt-settings" class="btn">设置</button>
+        <button id="btn-bt-counter" class="btn hidden">显示记牌器(Z)</button>
+        <button id="btn-bt-records" class="btn hidden">记录</button>
+        <button id="btn-bt-chat" class="btn hidden">发送消息</button>
+        <button id="btn-bt-see" class="btn hidden">看牌</button>
+        <button id="btn-bt-hand" class="btn hidden">隐藏手牌</button>
+        <button id="btn-bt-home" class="btn hidden">返回主界面</button>
+        <button id="btn-bid" class="btn hidden">叫地主(enter)</button>
+        <button id="btn-nobid" class="btn hidden">不叫(space)</button>
+        <button id="btn-play" class="btn hidden">出牌(enter)</button>
+        <button id="btn-pass" class="btn hidden">不要(space)</button>
+        <button id="btn-hint" class="btn hidden">提示(tab)</button>
+      </div>
+    </aside>
+
+    <main class="board-area">
+      <div class="board-wrap">
+        <div id="battle-table" class="battle-table">
+          <div id="bt-tip" class="bt-tip"></div>
+          <div id="bt-bottom" class="bt-bottom"></div>
+          <div id="bt-center" class="bt-center"></div>
+          <!-- 对手座位（自己 1 号位不显示；3 号位在右、7 号位在左；观战视角 1/3/7 号位各一名玩家） -->
+          <div id="bt-seat-1" class="bt-seat" data-seat="1"></div>
+          <div id="bt-seat-3" class="bt-seat" data-seat="3"></div>
+          <div id="bt-seat-7" class="bt-seat" data-seat="7"></div>
+          <!-- 娃娃信息框（悬停/点击娃娃显示；头像+名称一行，其余一行一项） -->
+          <div id="bt-doll-info" class="bt-doll-info hidden" data-seat="3">
+            <div class="bt-doll-info-head">
+              <span class="bt-doll-info-avatar"></span>
+              <span class="bt-doll-info-name"></span>
+            </div>
+            <div class="bt-doll-info-row">身份：<b class="bt-doll-info-role"></b></div>
+            <div class="bt-doll-info-row">状态：<b class="bt-doll-info-turn"></b></div>
+            <div class="bt-doll-info-row">剩余牌数：<b class="bt-doll-info-cards"></b></div>
+            <div class="bt-doll-info-row" id="bt-doll-info-score-row">Score：<b class="bt-doll-info-score"></b></div>
+          </div>
+          <!-- 牌桌下方出牌选项条（设置“出牌选项位置=牌桌下方”时使用） -->
+          <div id="bt-opt-bar" class="bt-opt-bar hidden"></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel right">
+      <div class="bt-player-list" id="bt-player-panel"></div>
+    </aside>
+
+    <!-- 我的手牌：牌桌下方的独立网格行（不与面板对齐） -->
+    <div id="bt-hand" class="bt-hand"></div>
+
+    <!-- 平板/手机端布局容器（仿 zjh 结构，暂不重组 DOM） -->
+    <div class="top-panel"></div>
+    <div class="bottom-panel"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <!-- 消息提示层 -->
+  <div id="chat-layer" class="chat-layer"></div>
+
+  <!-- 创建房间设置页（房主开局选项，参考炸金花） -->
+  <div id="bt-create-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="bt-create-settings-body">
+            <div class="setting-row toggle-row">
+              <span class="setting-label">启用记牌器</span>
+              <button type="button" class="toggle" id="bt-opt-counter"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">游戏模式</span>
+              <div class="sp-difficulty-switch" id="bt-mode-select">
+                <button type="button" class="switch-arrow" id="bt-mode-prev" aria-label="上一个模式"><img src="texture/lastchoice.png" alt="<"></button>
+                <span id="bt-mode-label" class="switch-label">单局</span>
+                <button type="button" class="switch-arrow" id="bt-mode-next" aria-label="下一个模式"><img src="texture/nextchoice.png" alt=">"></button>
+              </div>
+            </div>
+            <div class="setting-row slider-row" id="bt-mode-base-row">
+              <span class="setting-label">底分</span>
+              <input type="number" id="bt-score-input" min="1" max="100" value="1" class="num-input">
+            </div>
+            <div class="setting-row toggle-row" id="bt-mode-limit-row">
+              <span class="setting-label">限制局数</span>
+              <button type="button" class="toggle" id="bt-opt-limit"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row slider-row" id="bt-mode-count-row">
+              <span class="setting-label">局数</span>
+              <input type="number" id="bt-round-input" min="1" max="99" value="3" class="num-input">
+            </div>
+            <div class="setting-row slider-row" id="bt-mode-start-row">
+              <span class="setting-label">初始积分</span>
+              <input type="number" id="bt-startscore-input" min="1" max="1000000" value="1000" class="num-input">
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">禁用发送消息</span>
+              <button type="button" class="toggle" id="bt-opt-nochat"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">允许私聊</span>
+              <button type="button" class="toggle" id="bt-opt-private"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">允许观战</span>
+              <button type="button" class="toggle" id="bt-opt-allow-spec"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+          </div>
+          <div class="settings-scrollbar" id="bt-create-scrollbar">
+            <div class="settings-scrollbar-thumb" id="bt-create-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-bt-create-back" class="btn">返回</button>
+          <button id="btn-bt-create" class="btn">创建房间</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 等待界面（房间成员） -->
+  <div id="bt-wait-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="zjh-wait-head">
+        <button id="bt-open-btn" class="start-join-btn" type="button">开放</button>
+        <div class="zjh-wait-right">
+          <button id="bt-roomcode-btn" class="start-join-btn" type="button">房间号码</button>
+          <button id="bt-copylink-btn" class="start-join-btn" type="button">复制邀请链接</button>
+        </div>
+      </div>
+      <div class="confirm-frame">
+        <div class="zjh-wait-body" id="bt-wait-body"></div>
+        <div class="confirm-foot">
+          <button id="btn-bt-wait-back" class="btn">返回</button>
+          <button id="btn-bt-start" class="btn">开始游戏</button>
+          <button id="btn-bt-ready" class="btn hidden">准备</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="bt-settings-body">
+            <div class="setting-row slider-row">
+              <span class="setting-label">牌桌缩放</span>
+              <span id="bt-scale-label" class="setting-value">100%</span>
+              <input id="bt-scale" type="range" min="40" max="200" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">手牌大小</span>
+              <span id="bt-hand-scale-label" class="setting-value">100%</span>
+              <input id="bt-hand-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">面板缩放</span>
+              <span id="bt-panel-scale-label" class="setting-value">100%</span>
+              <input id="bt-panel-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">记牌器大小</span>
+              <span id="bt-counter-scale-label" class="setting-value">100%</span>
+              <input id="bt-counter-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">出牌选项位置</span>
+              <div class="sp-difficulty-switch" id="bt-actionpos-select">
+                <button type="button" class="switch-arrow" id="bt-actionpos-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="<"></button>
+                <span id="bt-actionpos-label" class="switch-label">左侧面板</span>
+                <button type="button" class="switch-arrow" id="bt-actionpos-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
+              </div>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">牌面透明</span>
+              <button type="button" class="toggle" id="bt-opt-transparent"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">边框提示花色</span>
+              <button type="button" class="toggle" id="bt-opt-suitborder"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">双色模式</span>
+              <button type="button" class="toggle" id="bt-opt-twocolor"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">隐藏消息提示</span>
+              <button type="button" class="toggle" id="bt-opt-hidechat"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+          </div>
+          <div class="settings-scrollbar" id="bt-settings-scrollbar">
+            <div class="settings-scrollbar-thumb" id="bt-settings-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-bt-settings-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 发送消息 -->
+  <div id="bt-chat-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">发送消息</div>
+        <div class="chat-body">
+          <div class="chat-players" id="bt-chat-players"></div>
+          <div class="chat-right">
+            <div class="chat-preset">
+              <div id="bt-chat-op-1" class="chat-options"></div>
+              <div id="bt-chat-op-2" class="chat-options"></div>
+              <div id="bt-chat-op-3" class="chat-options"></div>
+            </div>
+            <div class="chat-custom">
+              <input id="bt-chat-input" class="join-input" type="text" placeholder="自定义消息（1-60字，中文算2字）" spellcheck="false" autocomplete="off" maxlength="120">
+            </div>
+          </div>
+        </div>
+        <div class="confirm-foot">
+          <button id="bt-chat-cancel" class="btn">取消</button>
+          <button id="bt-chat-send" class="btn">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用确认框 -->
+  <div id="confirm-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="confirm-title">提示</div>
+        <div class="confirm-body">
+          <p id="confirm-text" class="confirm-text"></p>
+        </div>
+        <div class="confirm-foot">
+          <button id="confirm-yes" class="btn">确定</button>
+          <button id="confirm-no" class="btn">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结算弹窗 -->
+  <div id="bt-result-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="bt-result-title">本局结束</div>
+        <div class="confirm-body">
+          <p id="bt-result-text" class="confirm-text"></p>
+          <div id="bt-result-detail" class="bt-result-detail"></div>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-bt-result-new" class="btn hidden">再来一局</button>
+          <button id="btn-bt-result-records" class="btn hidden">查看记录</button>
+          <button id="btn-bt-result-home" class="btn">返回主界面</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查看记录（多局/积分模式，仿炸金花；置于结算弹窗之后，覆盖在其上不被遮挡） -->
+  <div id="bt-records-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="bt-records-body"></div>
+          <div class="settings-scrollbar" id="bt-records-scrollbar">
+            <div class="settings-scrollbar-thumb" id="bt-records-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-bt-records-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/battle.js"></script>
+</body>
+</html>

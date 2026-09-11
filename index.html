@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chess</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="start-wrap">
+    <div class="start-page">
+      <button id="btn-profile" class="start-join-btn" type="button">个人设置</button>
+      <div class="start-frame">
+        <div class="start-title">Chess</div>
+        <div class="start-body">
+          <img src="texture/chessintro.png" class="start-img" alt="Chess">
+        </div>
+        <div class="start-foot">
+          <button id="btn-start" class="btn">开始游戏</button>
+        </div>
+      </div>
+      <div class="game-switch">
+        <button id="switch-prev" class="switch-arrow" type="button" aria-label="上一个游戏"><img src="texture/lastchoice.png" alt="<"></button>
+        <span id="switch-label" class="switch-label">1/2</span>
+        <button id="switch-next" class="switch-arrow" type="button" aria-label="下一个游戏"><img src="texture/nextchoice.png" alt=">"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 选房界面 -->
+  <div id="lobby-modal" class="modal hidden">
+    <div class="confirm-page">
+      <button id="btn-lobby-refresh" class="start-join-btn" type="button">刷新</button>
+      <div class="confirm-frame">
+        <div class="lobby-body" id="lobby-body">
+          <button id="btn-join-room" class="room-btn" type="button">
+            <span class="room-bar"></span>
+            <span class="room-label">输入房间号开始游戏</span>
+            <img class="room-arrow" src="texture/rightarrow.png" alt="">
+          </button>
+          <div id="open-rooms" class="open-rooms"></div>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-lobby-back" class="btn">返回</button>
+          <button id="btn-lobby-create" class="btn">创建房间</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 输入房间号弹窗 -->
+  <div id="join-modal" class="modal hidden">
+    <div class="confirm-page">
+      <button id="btn-join-back" class="start-join-btn" type="button">返回</button>
+      <div class="confirm-frame">
+        <div class="confirm-title" id="join-title">输入房间码</div>
+        <div class="confirm-body">
+          <input id="join-id-input" class="join-input" type="text" placeholder="房间码" spellcheck="false" autocomplete="off">
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-join-spec" class="btn">观战</button>
+          <button id="btn-join-confirm" class="btn">确认</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 错误提示弹窗 -->
+  <div id="error-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="error-title">提示</div>
+        <div class="confirm-body">
+          <p id="error-text" class="confirm-text">房间号错误</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="error-ok" class="btn">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Turn Left：关卡集管理（闯关模式 / 工坊共用，行为按模式区分） -->
+  <div id="tl-sets-modal" class="modal hidden">
+    <div class="confirm-page">
+      <button id="tl-sets-folder" class="start-join-btn" type="button">打开文件夹</button>
+      <div class="tl-topright hidden" id="tl-topright">
+        <button id="tl-sets-refresh" class="profile-btn" type="button">刷新</button>
+        <button id="tl-sets-mode" class="profile-btn" type="button">游玩模式</button>
+      </div>
+      <div class="confirm-frame">
+        <div class="tl-sets-body" id="tl-sets-body">
+          <div id="tl-sets-list" class="open-rooms"></div>
+          <div id="tl-sets-empty"></div>
+        </div>
+        <div class="confirm-foot">
+          <button id="tl-sets-back" class="btn">返回</button>
+          <button id="tl-sets-right" class="btn"></button>
+        </div>
+      </div>
+      <input type="file" id="tl-folder-input" webkitdirectory hidden>
+    </div>
+  </div>
+
+  <!-- 闯关统计（查看统计） -->
+  <div id="campaign-stats-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="tl-record-scroll" id="campaign-stats-body"></div>
+        <div class="confirm-foot">
+          <button id="btn-camp-stats-del" class="btn">删除存档</button>
+          <button id="btn-camp-stats-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 技术提示（刷新/退出编辑器） -->
+  <div id="tech-notice-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">提示</div>
+        <div class="confirm-body"><div id="tech-notice-msg"></div></div>
+        <div class="confirm-foot">
+          <button id="tech-notice-ok" class="btn">好的</button>
+          <button id="tech-notice-no" class="btn">不再提示</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 免责声明 -->
+  <div id="disclaimer-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="disclaimer-scroll" id="disclaimer-body">
+          <p>本游戏集仅在 UI 风格与交互逻辑上借鉴了南京鸽游网络有限公司（Pigeon Games）制作的多人解谜游戏《思维密码》（CipherMind），且相关设计均为自行设计。</p>
+          <p>本游戏集的制作人员并非 Pigeon Games 官方人员，本游戏亦未获得 Pigeon Games 的认可或背书，不应被视为其官方作品或官方作品的延续。本游戏集未通过拆包、反编译《思维密码》等方式协助开发。</p>
+          <p>本游戏集的玩法（如国际象棋、纸牌游戏等）均为常见公众玩法或制作人员的原创玩法，与《思维密码》的玩法不重合。</p>
+          <p>游戏内部分素材系基于《思维密码》素材的重绘，其余素材均由制作人员自主设计。受像素风格表现力所限，部分素材可能与其他像素风格设计存在较高相似度，但不构成对相应素材的借用。游戏内字体均采用可免费商用的开源字体。本游戏集代码由 AI 编写。</p>
+          <p>制作人员：</p>
+          <p>xp00000000<br>kajiekazz<br>udtl520</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-disclaimer-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通用确认（删除存档等） -->
+  <div id="confirm-ask-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="ask-confirm-title">确认</div>
+        <div class="confirm-body"><div id="ask-confirm-msg"></div></div>
+        <div class="confirm-foot">
+          <button id="ask-confirm-no" class="btn">取消</button>
+          <button id="ask-confirm-yes" class="btn">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Turn Left：游戏模式选择（提示类弹窗，无标题无角按钮） -->
+  <div id="tl-mode-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="mode-content">
+          <button type="button" class="mode-btn" id="tl-mode-workshop">
+            <img class="mode-icon" src="texture/workshop.png" alt="工坊">
+            <span class="mode-text">工坊</span>
+          </button>
+          <button type="button" class="mode-btn" id="tl-mode-level">
+            <img class="mode-icon" src="texture/level.png" alt="闯关模式">
+            <span class="mode-text">闯关模式</span>
+          </button>
+        </div>
+        <div class="confirm-foot">
+          <button id="tl-mode-back" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 个人设置弹窗 -->
+  <div id="profile-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="profile-body" id="profile-body">
+          <div class="profile-row">
+            <span class="profile-label">名称</span>
+            <input id="profile-name" class="profile-input" type="text" maxlength="20" placeholder="1-20 字符" spellcheck="false" autocomplete="off">
+          </div>
+          <div class="profile-row">
+            <span class="profile-label">头像</span>
+            <div class="profile-controls">
+              <div class="profile-preview" id="avatar-preview"></div>
+              <div class="profile-avatar-grid" id="avatar-grid"></div>
+            </div>
+          </div>
+          <div class="profile-row toggle-row">
+            <span class="setting-label">根据身份更改头像颜色</span>
+            <button type="button" class="toggle" id="avatar-auto-toggle"><img src="texture/toggleon.png" alt="on"></button>
+          </div>
+          <div class="profile-row">
+            <span class="profile-label"></span>
+            <div class="profile-controls">
+              <button id="avatar-default-btn" class="btn profile-small">设为默认</button>
+              <button id="avatar-file-btn" class="btn profile-small">加载本地图片</button>
+              <input id="avatar-file-input" type="file" accept="image/*" hidden>
+            </div>
+          </div>
+          <div class="profile-row toggle-row hidden" id="avatar-smooth-row">
+            <span class="setting-label">是否启用线性插值算法</span>
+            <button type="button" class="toggle" id="avatar-smooth-toggle"><img src="texture/toggleon.png" alt="on"></button>
+          </div>
+          <div class="profile-row">
+            <span class="profile-label">背景</span>
+            <div class="profile-controls">
+              <input id="bg-color-input" class="profile-input profile-color" type="text" placeholder="#FFFFFF" spellcheck="false" autocomplete="off">
+              <span class="profile-preview-swatch" id="bg-preview"></span>
+            </div>
+          </div>
+          <div class="profile-row">
+            <span class="profile-label"></span>
+            <div class="profile-controls">
+              <button id="bg-default-btn" class="btn profile-small">设为默认</button>
+              <button id="bg-file-btn" class="btn profile-small">加载背景图片</button>
+              <input id="bg-file-input" type="file" accept="image/*" hidden>
+            </div>
+          </div>
+          <div class="profile-row toggle-row hidden" id="bg-smooth-row">
+            <span class="setting-label">是否启用线性插值算法</span>
+            <button type="button" class="toggle" id="bg-smooth-toggle"><img src="texture/toggleon.png" alt="on"></button>
+          </div>
+          <div class="profile-row toggle-row">
+            <span class="setting-label">纯黑模式</span>
+            <button type="button" class="toggle" id="pureblack-toggle"><img src="texture/toggleoff.png" alt="off"></button>
+          </div>
+          <div class="profile-row disclaimer-row" id="disclaimer-row">
+            <span class="setting-label">免责声明</span>
+            <img class="disclaimer-arrow" src="texture/rightarrow.png" alt="">
+          </div>
+          <div class="settings-scrollbar" id="profile-scrollbar">
+            <div class="settings-scrollbar-thumb" id="profile-scrollbar-thumb"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-foot">
+          <button id="profile-cancel" class="btn">取消</button>
+          <button id="profile-save" class="btn">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="turnleft-levels/TurnLeft.js"></script>
+  <script src="turnleft-levels/Oneshot.js"></script>
+  <script src="turnleft-levels/Endportal.js"></script>
+  <script src="turnleft-levels/Island.js"></script>
+  <script src="turnleft-levels/Symmetrical.js"></script>
+  <script src="turnleft-levels/Multi-Portal.js"></script>
+  <script src="turnleft-levels/Giant.js"></script>
+<script src="turnleft-levels/TurnLeft.js"></script>
+  <script src="turnleft-levels/Oneshot.js"></script>
+  <script src="turnleft-levels/Endportal.js"></script>
+<script src="js/profile.js"></script>
+  <script src="js/index.js"></script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turn Left · 游玩</title>
+  <link rel="stylesheet" href="css/turnleft-editor.css">
+</head>
+<body class="editor-page tl-play-page">
+  <div class="game-layout">
+    <aside class="panel left">
+      <div class="status-box">
+        <div id="tl-status" class="status">选择关卡开始</div>
+      </div>
+      <div class="controls">
+        <button id="btn-levels" class="btn">关卡列表</button>
+        <button id="btn-tl-dex" class="btn">图鉴</button>
+        <button id="btn-play-settings" class="btn">设置</button>
+        <button id="btn-prev-lv" class="btn" disabled>上一关(Shift+A)</button>
+        <button id="btn-next-lv" class="btn" disabled>下一关(Shift+D)</button>
+        <button id="btn-play-back" class="btn">返回</button>
+        <button id="btn-restart" class="btn">重新开始(O)</button>
+      </div>
+      <div class="controls-divider"></div>
+      <div class="controls" id="tl-dir-btns"></div>
+    </aside>
+
+    <main class="board-area">
+      <div class="level-name hidden" id="tl-level-name"></div>
+      <div class="board-wrap" id="board-wrap">
+        <div class="workbench" id="workbench">
+          <div class="grid-view" id="grid-view">
+            <div class="grid-canvas" id="grid-canvas"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel right">
+      <div class="task-panel" id="task-panel"></div>
+      <div class="tl-stats-divider"></div>
+      <div class="tl-stats" id="tl-stats"></div>
+    </aside>
+  </div>
+
+  <!-- 关卡列表 -->
+  <div id="levels-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="lobby-body" id="levels-lobby">
+          <div id="levels-list" class="open-rooms"></div>
+          <div id="levels-empty" class="set-empty"></div>
+        </div>
+        <div class="tl-list-scrollbar" id="levels-scrollbar"><div class="tl-list-scrollbar-thumb" id="levels-scrollbar-thumb"></div></div>
+        <div class="confirm-foot">
+          <button id="btn-levels-close" class="btn">返回</button>
+          <button id="btn-levels-stats" class="btn hidden">查看统计</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 工坊统计（会话内成绩） -->
+  <div id="play-stats-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="tl-record-scroll" id="play-stats-body"></div>
+        <div class="confirm-foot">
+          <button id="btn-play-stats-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 图鉴 -->
+  <div id="dex-modal" class="modal hidden">
+    <div class="confirm-page">
+      <button id="btn-dex-back" class="start-join-btn" type="button">返回</button>
+      <div class="confirm-frame">
+        <div class="tl-dex-scroll" id="tl-dex-body"></div>
+        <div class="confirm-foot">
+          <button id="btn-dex-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 退出工坊确认 -->
+  <div id="quit-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">提示</div>
+        <div class="confirm-body"><div id="quit-msg">退出关卡后，你的成绩将被清空，是否确认退出</div></div>
+        <div class="confirm-foot">
+          <button id="quit-cancel" class="btn">返回</button>
+          <button id="quit-ok" class="btn">确认退出</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示弹窗（无法移动 / 通关等） -->
+  <div id="tl-dialog-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="tl-dialog-title">提示</div>
+        <div class="confirm-body"><div id="tl-dialog-msg" class="tl-dialog-msg"></div></div>
+        <div class="confirm-foot">
+          <button id="tl-dialog-cancel" class="btn">取消</button>
+          <button id="tl-dialog-restart" class="btn">重新开始</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置（缩放，同制作器） -->
+  <div id="play-settings-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+          <div class="settings-scroll">
+            <div class="settings-body" id="ps-settings-body">
+
+            <div class="setting-row slider-row">
+              <span class="setting-label">动画速度</span>
+              <span id="ps-speed-label" class="setting-value">100%</span>
+              <input id="ps-speed-scale" type="range" min="25" max="200" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">玩家不透明度</span>
+              <span id="ps-opacity-label" class="setting-value">100%</span>
+              <input id="ps-opacity-scale" type="range" min="0" max="100" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">面板缩放</span>
+              <span id="ps-panel-label" class="setting-value">100%</span>
+              <input id="ps-panel-scale" type="range" min="60" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">棋盘缩放</span>
+              <span id="ps-bench-label" class="setting-value">100%</span>
+              <input id="ps-bench-scale" type="range" min="50" max="200" step="5" value="100">
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">方向键定位</span>
+              <div class="sp-difficulty-switch" id="ps-dir-switch">
+                <button type="button" class="switch-arrow" id="ps-dir-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="&lt;"></button>
+                <span id="ps-dir-label" class="switch-label">绝对</span>
+                <button type="button" class="switch-arrow" id="ps-dir-next" aria-label="下一个"><img src="texture/nextchoice.png" alt="&gt;"></button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">经过任务线后</span>
+              <div class="sp-difficulty-switch" id="ps-pass-switch">
+                <button type="button" class="switch-arrow" id="ps-pass-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="&lt;"></button>
+                <span id="ps-pass-label" class="switch-label">填充</span>
+                <button type="button" class="switch-arrow" id="ps-pass-next" aria-label="下一个"><img src="texture/nextchoice.png" alt="&gt;"></button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">经过红线后</span>
+              <div class="sp-difficulty-switch" id="ps-red-switch">
+                <button type="button" class="switch-arrow" id="ps-red-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="&lt;"></button>
+                <span id="ps-red-label" class="switch-label">消失</span>
+                <button type="button" class="switch-arrow" id="ps-red-next" aria-label="下一个"><img src="texture/nextchoice.png" alt="&gt;"></button>
+              </div>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">是否显示动画效果</span>
+              <button type="button" class="toggle" id="ps-showanim-toggle"><img src="texture/toggleon.png" alt="on"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">是否显示玩家朝向</span>
+              <button type="button" class="toggle" id="ps-facing-toggle"><img src="texture/toggleon.png" alt="on"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">是否启用动态方向提示</span>
+              <button type="button" class="toggle" id="ps-anim-toggle"><img src="texture/toggleon.png" alt="on"></button>
+            </div>
+          </div>
+          <div class="settings-scrollbar" id="ps-scrollbar">
+            <div class="settings-scrollbar-thumb" id="ps-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-play-settings-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="turnleft-levels/TurnLeft.js"></script>
+  <script src="turnleft-levels/Oneshot.js"></script>
+  <script src="turnleft-levels/Endportal.js"></script>
+  <script src="turnleft-levels/Island.js"></script>
+  <script src="turnleft-levels/Symmetrical.js"></script>
+  <script src="turnleft-levels/Multi-Portal.js"></script>
+  <script src="turnleft-levels/Giant.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/turnleft-play.js"></script>
+</body>
+</html>
