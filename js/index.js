@@ -48,7 +48,7 @@
     { title: 'Spider Solitaire', img: 'texture/spidersolitaireintro.png', page: 'spider.html', game: 'spider' },
     { title: 'Compare', img: 'texture/compareintro.png', page: 'zjh.html', game: 'zjh' },
     { title: 'Battle', img: 'texture/battleintro.png', page: 'battle.html', game: 'battle' },
-    { title: 'Turn Left', img: 'texture/chessintro.png', page: '', game: 'turnleft' }
+    { title: 'Turn Left', img: 'texture/turnleftintro.png', page: '', game: 'turnleft' }
   ];
   var gameIdx = 0;
   try {
