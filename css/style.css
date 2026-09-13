@@ -1459,10 +1459,10 @@ input[type="range"]::-moz-range-thumb {
 /* 计时：右下角、底部按钮上方，不阻挡牌且图层在牌上方 */
 .fc-timer {
   position: absolute;
-  right: calc(var(--sb) / 3);
-  bottom: calc(9% + var(--sb) / 3);
+  right: calc(0.517cqw);   /* 随窗口缩放（1.55cqw 的 1/3） */
+  bottom: calc(9% + 0.517cqw);
   color: #FFD038;
-  font-size: calc(var(--sb) * 2.4);
+  font-size: 3.72cqw;   /* = --sb * 2.4，随窗口缩放等比变化 */
   line-height: 1;
   z-index: 20;
   pointer-events: none;
@@ -1475,10 +1475,10 @@ input[type="range"]::-moz-range-thumb {
 .fc-timer.hidden { display: none; }
 .kd-min-moves {
   position: absolute;
-  left: calc(var(--sb) / 3);
-  bottom: calc(9% + var(--sb) / 3);
+  left: calc(0.517cqw);   /* 随窗口缩放（1.55cqw 的 1/3） */
+  bottom: calc(9% + 0.517cqw);
   color: #FFD038;
-  font-size: calc(var(--sb) * 2.4);
+  font-size: 3.72cqw;   /* = --sb * 2.4，随窗口缩放等比变化 */
   line-height: 1;
   z-index: 20;
   pointer-events: none;

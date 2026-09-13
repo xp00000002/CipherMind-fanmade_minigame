@@ -1767,7 +1767,7 @@ h1, h2, h3, b, strong { font-weight: 400; }
   border-width: 3px;
 }
 
-/* 按钮：全透明背景 + 金色文字 + 金边；表单控件继承页面字体 */
+/* 按钮：深色底 + 金色文字 + 金边；表单控件继承页面字体 */
 .btn,
 .btn-primary,
 .btn-secondary,
@@ -1782,7 +1782,7 @@ h1, h2, h3, b, strong { font-weight: 400; }
 .btn-secondary,
 .btn-danger,
 .btn-light {
-  background: transparent;
+  background: #000000D3;
   border: 2px solid #FFD038;
   color: #FFD038;
 }
@@ -1791,7 +1791,7 @@ h1, h2, h3, b, strong { font-weight: 400; }
 .btn-secondary:hover,
 .btn-danger:hover,
 .btn-light:hover {
-  background: rgba(255, 208, 56, 0.1);
+  background: linear-gradient(rgba(255, 208, 56, 0.1), rgba(255, 208, 56, 0.1)), #000000D3;
 }
 .btn:active { transform: translateY(1px); }
 

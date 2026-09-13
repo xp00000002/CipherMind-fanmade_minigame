@@ -1530,7 +1530,7 @@
     if (reach(i31)) entry('turnleft-texture/arrowline.png', 7, '箭头线', '箭头线是一种特殊的线。玩家只能沿箭头指向的方向经过，而不能反向经过。');
     if (reach(i41)) entry(showP234
       ? ['turnleft-texture/portal1.png', 'turnleft-texture/portal2.png', 'turnleft-texture/portal3.png', 'turnleft-texture/portal4.png']
-      : 'turnleft-texture/portal1.png', 11, '传送门', '传送门是一种特殊的角点。玩家进入传送门时，会被传送至另一个传送门，且保持玩家当前的朝向。\n传送门可以和除它本身外的所有格点重合。对于重合点的判定，你可以记住：起点的优先级最高，而传送门的最低。');
+      : 'turnleft-texture/portal1.png', 11, '传送门', '传送门是一种特殊的角点。玩家进入传送门时，会被传送至另一个传送门，且保持玩家当前的朝向。\n传送门可以和除它本身外的所有角点重合。对于重合点的判定，你可以记住：起点的优先级最高，而传送门的最低。');
     if (reach(i51)) entry('turnleft-texture/taskline.png', 3, '任务线', '任务线是一种特殊的线。玩家需要经过所有的任务线，才可在到达终点时胜利。\n任务线可以和其它的特殊线叠加。当一条线叠加了多种特殊线时，它会继承这些线的全部功能。');
     if (reach(i61)) entry('turnleft-texture/redline.png', 3, '红线', '红线是一种特殊的线。玩家只能经过它们一次，经过后它们会消失。');
     $('dex-modal').classList.remove('hidden');
