@@ -1004,7 +1004,7 @@
     page.classList.toggle('fc-suit-border', spSettings.suitBorder && !spSettings.twoColor);
     page.classList.toggle('fc-two-color-border', spSettings.suitBorder && spSettings.twoColor);
     document.documentElement.style.setProperty('--fc-win-scale', spSettings.winScale);
-    if (timerEl) timerEl.classList.toggle('hidden', !spSettings.timer);
+    /* 计时等游戏设置不在设置面板即时生效，统一由新局/重玩时应用 */
     render();
   }
   var winScaleSlider = $('fc-win-scale');

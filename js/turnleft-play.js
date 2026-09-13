@@ -1064,7 +1064,7 @@
     $('tl-dialog-msg').textContent = '您已通关，共花费 ' + (state ? state.steps : 0) + ' 步';
     $('tl-dialog-cancel').classList.remove('hidden');
     $('tl-dialog-cancel').textContent = '返回';
-    var hasNext = curIdx + 1 < levels.length;
+    var hasNext = !testMode && curIdx + 1 < levels.length;
     var rt = $('tl-dialog-restart');
     rt.classList.toggle('hidden', !hasNext);
     if (!hasNext) {
@@ -1105,7 +1105,7 @@
   });
   $('tl-dialog-restart').addEventListener('click', function () {
     if (dialogVictory) {
-      if (curIdx + 1 < levels.length) winGoNext();
+      if (!testMode && curIdx + 1 < levels.length) winGoNext();
       else { closeDialog(); startLevel(curIdx); }
       return;
     }
@@ -1235,7 +1235,7 @@
     if (!$('tl-dialog-modal').classList.contains('hidden')) {
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (dialogVictory && curIdx + 1 < levels.length) winGoNext();
+        if (!testMode && dialogVictory && curIdx + 1 < levels.length) winGoNext();
         else { closeDialog(); startLevel(curIdx); }
       } else if ((e.key || '').toLowerCase() === 'o' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
@@ -1254,8 +1254,8 @@
       startLevel(curIdx);
       return;
     }
-    /* Shift+A / Shift+D：上一关 / 下一关 */
-    if (e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    /* Shift+A / Shift+D：上一关 / 下一关（测试关卡模式下禁用） */
+    if (!testMode && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       var kk = (e.key || '').toLowerCase();
       if (kk === 'a') { e.preventDefault(); goLevel(-1); return; }
       if (kk === 'd') { e.preventDefault(); goLevel(1); return; }
@@ -1362,6 +1362,7 @@
 
   /* ---------- 按钮 / 弹窗 ---------- */
   var mode = 'workshop';
+  var testMode = false;   /* 制作器“测试关卡”：隐藏关卡导航，返回回到编辑页面 */
   var setNameParam = '';
   var playUnordered = false;
   var unlockedIdx = 0;   /* 已解锁关卡的最大下标（含） */
@@ -1397,6 +1398,7 @@
   }
   /* 闯关模式：记录本关完成与各任务完成情况 */
   function recordLevelResult() {
+    if (testMode) return;                  /* 测试关卡不记录成绩 */
     if (!winDone) return;                 /* 仅在胜利时记录 */
     if (!levels[curIdx]) return;
     var lvl = levels[curIdx];
@@ -1442,6 +1444,12 @@
     winMoving = false;
   }
   $('btn-play-back').addEventListener('click', function () {
+    if (testMode) {
+      /* 测试关卡：直接返回编辑页面（恢复测试前的关卡集与本关） */
+      bypassUnload = true;
+      location.href = 'turnleft-workshop.html?action=test-back';
+      return;
+    }
     if (mode === 'campaign') {
       location.href = 'index.html?open=campaign';
       return;
@@ -1452,7 +1460,7 @@
   $('quit-cancel').addEventListener('click', function () { $('quit-modal').classList.add('hidden'); });
   var bypassUnload = false;
   window.addEventListener('beforeunload', function (e) {
-    if (mode !== 'workshop' || bypassUnload) return;
+    if (mode !== 'workshop' || bypassUnload || testMode) return;   /* 测试关卡不提示离开 */
     /* 仅在本会话已有成绩或当前局有进度时提示 */
     var hasProgress = (state && state.steps > 0) || Object.keys(wsRecords).length > 0;
     if (!hasProgress) return;
@@ -1535,7 +1543,6 @@
     if (reach(i61)) entry('turnleft-texture/redline.png', 3, '红线', '红线是一种特殊的线。玩家只能经过它们一次，经过后它们会消失。');
     $('dex-modal').classList.remove('hidden');
   }
-  $('btn-dex-back').addEventListener('click', function () { $('dex-modal').classList.add('hidden'); });
   $('btn-dex-close').addEventListener('click', function () { $('dex-modal').classList.add('hidden'); });
   $('btn-play-settings').addEventListener('click', openSettings);
   $('btn-play-settings-close').addEventListener('click', function () { $('play-settings-modal').classList.add('hidden'); });
@@ -1775,9 +1782,20 @@
   var qs = new URLSearchParams(location.search);
   var setName = qs.get('set');
   mode = qs.get('mode') || 'workshop';
+  testMode = qs.get('test') === '1';
   setNameParam = setName || '';
   var dexBtn = $('btn-tl-dex');
   if (dexBtn) dexBtn.classList.toggle('hidden', mode !== 'campaign');
+  if (testMode) {
+    /* 测试关卡：隐藏关卡导航与关卡进度提示，仅保留本关体验 */
+    ['btn-levels', 'btn-prev-lv', 'btn-next-lv'].forEach(function (id) {
+      var b = $(id);
+      if (b) b.classList.add('hidden');
+    });
+    var statusBox = document.querySelector('.panel.left .status-box');
+    if (statusBox) statusBox.classList.add('hidden');
+    setNameParam = '__test__';   /* 测试不写入正式关卡进度 */
+  }
   var setData = null;
   var isMainCampaign = false;
   if (mode === 'campaign') {
@@ -1794,6 +1812,8 @@
     var pick = SPECIAL_G[setNameParam] ? window[SPECIAL_G[setNameParam]] : window.TURNLEFT_CAMPAIGN_JSON;
     try { setData = JSON.parse(pick || 'null'); } catch (e) {}
     if (setNameParam !== 'TurnLeft') playUnordered = true;
+  } else if (testMode) {
+    try { setData = JSON.parse(localStorage.getItem('tlTestSetRaw') || 'null'); } catch (e) {}
   } else {
     try {
       var arr = JSON.parse(localStorage.getItem('tlWorkshopFolder') || '[]');
@@ -1814,7 +1834,11 @@
   loadUnlocked();
   if (playUnordered) unlockedIdx = levels.length - 1;
   var startIdx = 0;
-  if (mode === 'campaign') {
+  if (testMode) {
+    var tIdx = parseInt(localStorage.getItem('tlTestIndex'), 10);
+    startIdx = isNaN(tIdx) ? 0 : tIdx;
+    if (startIdx < 0 || startIdx >= levels.length) startIdx = 0;
+  } else if (mode === 'campaign') {
     var o = readCampSave();
     var found = null;
     for (var li = 0; li <= unlockedIdx; li++) {

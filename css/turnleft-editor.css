@@ -5053,3 +5053,54 @@ h1, h2, h3, b, strong { font-weight: 400; }
 :where(html.pureblack) #btn-next:disabled, :where(html.pureblack) #btn-next:disabled:hover { background: #000000; }
 /* �������ֲ��ڵ�ҳ�棨��ȫ�ֵ���һ�£� */
 #set-modal { background: transparent; }
+/* �����ⷨ����������ʾ�൯��ͬ�ߴ磨55vw / 16:10�� */
+#export-modal .settings-page {
+  --sb: calc(55vw * 0.0155);
+  width: 55vw;
+  aspect-ratio: 16 / 10;
+}
+#export-modal .settings-body { font-size: 5.5cqh; }
+@media (max-width: 560px) {
+  #export-modal .settings-page {
+    width: 98vw;
+    --sb: calc(98vw * 0.0155);
+  }
+  #export-modal .settings-body { font-size: 16px; }
+}
+/* �����ⷨ���������в���ť������/ɾ��������������༭һ�µش�ֱ���� */
+#export-modal .act-row {
+  flex: 0 0 auto;
+  position: relative;
+  display: block;
+  height: 14cqh;
+  min-height: 44px;
+  padding: 0;
+  box-sizing: border-box;
+  background: #000000D3;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+}
+#export-modal .act-row:hover { background: #112306; }
+#export-modal .act-row .room-bar {
+  position: absolute;
+  left: 1.5%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1.5%;
+  height: 65%;
+  background: #FFD038;
+  pointer-events: none;
+}
+#export-modal .act-row .act-text {
+  position: absolute;
+  left: 4.5%;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #FFD038;
+  font-size: clamp(15px, 4.55cqh, 26px);
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#export-modal .act-row.act-top { margin-top: calc(var(--sb) / 3 - var(--sb) * 1.5); }

@@ -137,12 +137,13 @@
     markLevelEdited();
   }
   function updateHistBtns() {
-    var u = $('btn-undo'), r = $('btn-redo'), c = $('btn-clear'), s = $('btn-solve'), tk = $('btn-tasks'), bt = $('btn-batch');
+    var u = $('btn-undo'), r = $('btn-redo'), c = $('btn-clear'), s = $('btn-solve'), tk = $('btn-tasks'), bt = $('btn-batch'), tst = $('btn-test');
     if (u) u.disabled = undoStack.length === 0;
     if (r) r.disabled = redoStack.length === 0;
     if (c) c.disabled = !stage;
     if (s) s.disabled = !stage;
     if (tk) tk.disabled = !stage;
+    if (tst) tst.disabled = !stage;
     if (bt) bt.disabled = !levelSet || !levelSet.length;
     var p = $('btn-prev'), nx = $('btn-next');
     var curIdx = levelSet && currentItem ? levelSet.indexOf(currentItem) : -1;
@@ -325,7 +326,8 @@
       { id: 'btn-save', full: '保存关卡集(Ctrl+S)', short: '保存关卡集' },
       { id: 'btn-undo', full: '撤销(Ctrl+Z)', short: '撤销' },
       { id: 'btn-redo', full: '重做(Ctrl+Y)', short: '重做' },
-      { id: 'btn-clear', full: '清空(Shift+Z)', short: '清空' }
+      { id: 'btn-clear', full: '清空(Shift+Z)', short: '清空' },
+      { id: 'btn-test', full: '测试关卡(Ctrl+Space)', short: '测试关卡' }
     ];
     defs.forEach(function (d) {
       var b = $(d.id);
@@ -1377,7 +1379,7 @@
     wsMarkClean();
   }
 
-  function importSet(list) {
+  function importSet(list, silent) {
     if (Array.isArray(list) && list.length && typeof list[0] === 'string') {
       /* “unordered” 标记：数组首元素为字符串 */
       if (list[0] === 'unordered') {
@@ -1419,7 +1421,7 @@
     showEmptyCanvas();
     refreshSetBtn();
     renderSetList();
-    toast('导入成功：共 ' + levelSet.length + ' 关');
+    if (!silent) toast('导入成功：共 ' + levelSet.length + ' 关');
     return true;
   }
 
@@ -1523,6 +1525,12 @@
     if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
       e.preventDefault();
       openSaveModal();
+      return;
+    }
+    /* Ctrl+Space：测试关卡 */
+    if (e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.code === 'Space' || e.key === ' ' || e.key === 'Spacebar')) {
+      e.preventDefault();
+      if (stage) launchTest();
       return;
     }
     var t = e.target;
@@ -1771,20 +1779,45 @@
     }
     showModal($('solve-modal'));
   }
+  var exportConds = [];
   function openExportModal() {
     if (!solveResult || !solveResult.ok) return;
-    $('exp-min').value = solveResult.dist;
-    $('exp-max').value = solveResult.dist;
+    /* 默认一个“限制步数”条件：最小值=理论最小步数，默认不限最大值 */
+    exportConds = [{ type: 0, minstep: solveResult.dist, maxstep: null, _lim: false }];
+    renderCondList($('export-cond-body'), exportConds, '限制条件', false);
     showModal($('export-modal'));
   }
   function doExportSolutions() {
     if (!solveResult || !solveResult.ok) return;
-    var mn = parseInt($('exp-min').value, 10);
-    var mx = parseInt($('exp-max').value, 10);
-    if (isNaN(mn) || isNaN(mx)) { toast('请输入有效的步数范围'); return; }
-    if (mn < solveResult.dist) { toast('最小步数不能小于最短步数（' + solveResult.dist + '）'); return; }
-    if (mx < mn) { toast('最大步数不能小于最小步数'); return; }
-    if (mx > 200) { toast('最大步数不能超过 200'); return; }
+    var conds = [];
+    for (var ci = 0; ci < exportConds.length; ci++) {
+      var cc = collectCondFrom(exportConds, ci);
+      if (!cc) return;
+      conds.push(cc);
+    }
+    /* 步数条件决定枚举上下限，其余条件在胜利时过滤 */
+    var mn = 0, mx = 200;
+    conds.forEach(function (c) {
+      if (c.type === 1 || c.type === 5) return;
+      if (c.minstep > mn) mn = c.minstep;
+      if (c.maxstep !== null && c.maxstep !== undefined && c.maxstep < mx) mx = c.maxstep;
+    });
+    if (mn > mx) { toast('限制条件中的最小步数超过最大步数'); return; }
+    var FACE_BIT = [2, 1, 8, 4];   /* SV_DIR 下标 -> 朝向位（右/上/左/下） */
+    function condsPass(total, red, left, portal, faceDirIdx) {
+      for (var i2 = 0; i2 < conds.length; i2++) {
+        var c = conds[i2];
+        if (c.type === 1) {
+          if (!(c.facing & FACE_BIT[faceDirIdx])) return false;
+          continue;
+        }
+        if (c.type === 5) continue;   /* 导出限制不含开局朝向 */
+        var v = c.type === 2 ? left : c.type === 3 ? red : c.type === 4 ? portal : total;
+        if (v < c.minstep) return false;
+        if (c.maxstep !== null && c.maxstep !== undefined && v > c.maxstep) return false;
+      }
+      return true;
+    }
 
     /* 枚举 [mn, mx] 步内的所有解法 */
     var solutions = [];
@@ -1866,9 +1899,9 @@
         var total = steps + 1;
         var rec = { left: face >= 0 && d !== face ? 1 : 0, red: meta.red ? 1 : 0, portal: tp ? 1 : 0, zh: D.zh };
         if (won) {
-          if (total >= mn && total <= mx) {
-            var cRed = rec.red, cLeft = rec.left, cPortal = rec.portal;
-            pathSteps.forEach(function (r) { cRed += r.red; cLeft += r.left; cPortal += r.portal; });
+          var cRed = rec.red, cLeft = rec.left, cPortal = rec.portal;
+          pathSteps.forEach(function (r) { cRed += r.red; cLeft += r.left; cPortal += r.portal; });
+          if (total >= mn && total <= mx && condsPass(total, cRed, cLeft, cPortal, d)) {
             solutions.push({
               lines: pathLines.slice(1).concat([line]),
               len: total,
@@ -1897,7 +1930,7 @@
     out.push('关卡：' + (currentItem.name || 'level'));
     out.push('宽高：' + stage.w + 'x' + stage.h);
     out.push('最短步数：' + solveResult.dist);
-    out.push('导出范围：' + mn + ' - ' + mx + ' 步');
+    out.push('限制条件：' + (conds.length ? conds.map(condLabel).join('；') : '无'));
     out.push('解法数量：' + solutions.length);
     out.push('');
     solutions.forEach(function (sol, i) {
@@ -2089,14 +2122,16 @@
     return b;
   }
   function renderCondEditor() {
-    var body = $('task-detail-body');
+    renderCondList($('task-detail-body'), workingTask || [], '任务类型', true);
+  }
+  /* 条件编辑器（任务编辑 / 导出解法共用；allowStartFacing=false 时不提供“限制开局朝向”） */
+  function renderCondList(body, arr, typeLabel, allowStartFacing) {
     body.innerHTML = '';
-    var arr = workingTask || [];
+    var typeCount = allowStartFacing === false ? 5 : TASK_TYPES.length;
     /* 添加条件：独立一行（顶部） */
     var addRow = mkActRow('添加条件', function () {
-      console.log('[editor] add-cond clicked, count=' + workingTask.length);
-      workingTask.push(newDefaultCond());
-      renderCondEditor();
+      arr.push(newDefaultCond());
+      renderCondList(body, arr, typeLabel, allowStartFacing);
     });
     addRow.classList.add('act-top');
     body.appendChild(addRow);
@@ -2117,15 +2152,15 @@
       blk.className = 'cond-block';
       /* 删除条件：独立整行 */
       blk.appendChild(mkActRow('删除条件', function () {
-        workingTask.splice(i, 1);
-        renderCondEditor();
+        arr.splice(i, 1);
+        renderCondList(body, arr, typeLabel, allowStartFacing);
       }));
       /* 任务类型行 */
       var typeRow = document.createElement('div');
       typeRow.className = 'setting-row';
       var tl = document.createElement('span');
       tl.className = 'setting-label';
-      tl.textContent = '任务类型';
+      tl.textContent = typeLabel;
       var sw = document.createElement('div');
       sw.className = 'sp-difficulty-switch';
       function mkArrow(src, dir) {
@@ -2138,19 +2173,19 @@
         b.addEventListener('click', function (ev) {
           ev.preventDefault();
           ev.stopPropagation();
-          var t = workingTask[i].type + dir;
-          if (t < 0) t = TASK_TYPES.length - 1;
-          if (t >= TASK_TYPES.length) t = 0;
-          workingTask[i].type = t;
-          delete workingTask[i].facing;
-          workingTask[i]._fb = 0;
+          var t = arr[i].type + dir;
+          if (t < 0) t = typeCount - 1;
+          if (t >= typeCount) t = 0;
+          arr[i].type = t;
+          delete arr[i].facing;
+          arr[i]._fb = 0;
           if (t === 1 || t === 5) {
-            delete workingTask[i].minstep;
-            delete workingTask[i].maxstep;
+            delete arr[i].minstep;
+            delete arr[i].maxstep;
           } else {
-            workingTask[i]._lim = workingTask[i]._lim === undefined ? true : workingTask[i]._lim;
+            arr[i]._lim = arr[i]._lim === undefined ? true : arr[i]._lim;
           }
-          renderCondEditor();
+          renderCondList(body, arr, typeLabel, allowStartFacing);
         });
         return b;
       }
@@ -2182,10 +2217,10 @@
           ev.preventDefault();
           ev.stopPropagation();
           var on = tg.getAttribute('data-on') !== '1';
-          var cw = workingTask[i];
+          var cw = arr[i];
           cw._lim = on;
           if (!on) cw.maxstep = '';
-          renderCondEditor();
+          renderCondList(body, arr, typeLabel, allowStartFacing);
         });
         tRow.appendChild(tL);
         tRow.appendChild(tg);
@@ -2218,8 +2253,8 @@
         inp.value = value === undefined || value === null ? '' : value;
         if (disabled) inp.disabled = true;
         inp.addEventListener('input', function () {
-          if (key === 'min') workingTask[i].minstep = inp.value;
-          else workingTask[i].maxstep = inp.value;
+          if (key === 'min') arr[i].minstep = inp.value;
+          else arr[i].maxstep = inp.value;
         });
         row.appendChild(l);
         row.appendChild(inp);
@@ -2238,8 +2273,8 @@
           var on2 = tg.getAttribute('data-on') !== '1';
           setToggleImg(tg, on2);
           var bits = { 'face-up': 1, 'face-right': 2, 'face-down': 4, 'face-left': 8 };
-          var cur = workingTask[i]._fb !== undefined ? workingTask[i]._fb : (parseInt(workingTask[i].facing, 10) || 0);
-          workingTask[i]._fb = on2 ? (cur | bits[act]) : (cur & ~bits[act]);
+          var cur = arr[i]._fb !== undefined ? arr[i]._fb : (parseInt(arr[i].facing, 10) || 0);
+          arr[i]._fb = on2 ? (cur | bits[act]) : (cur & ~bits[act]);
         });
         row.appendChild(l);
         row.appendChild(tg);
@@ -2248,7 +2283,10 @@
     });
   }
   function collectCond(ci) {
-    var c = workingTask[ci];
+    return collectCondFrom(workingTask, ci);
+  }
+  function collectCondFrom(arr, ci) {
+    var c = arr[ci];
     var clean = { type: c.type };
     if (c.type === 1 || c.type === 5) {
       var fb = c._fb !== undefined ? c._fb : (parseInt(c.facing, 10) || 0);
@@ -2291,6 +2329,22 @@
   }
 
   $('btn-tasks').addEventListener('click', openTaskModal);
+  /* 测试关卡：进入游玩界面试玩本关，返回时回到编辑页面并停留在本关 */
+  function launchTest() {
+    if (!levelSet || !levelSet.length || !currentItem) { toast('请先创建并选择一个关卡'); return; }
+    persistLiveTo(currentItem);
+    var idx = levelSet.indexOf(currentItem);
+    var raw = JSON.stringify(editorSettings.unordered ? ['unordered'].concat(levelSet) : levelSet);
+    try {
+      localStorage.setItem('tlTestSetRaw', raw);
+      localStorage.setItem('tlTestSetName', (wsCtx && wsCtx.fileName) || 'Test');
+      localStorage.setItem('tlTestIndex', String(idx));
+      localStorage.setItem('tlTestDirty', wsHasChanges() ? '1' : '0');
+    } catch (e) {}
+    bypassUnload = true;   /* 主动跳转不触发离开提示 */
+    location.href = 'turnleft-play.html?mode=workshop&test=1';
+  }
+  $('btn-test').addEventListener('click', launchTest);
   $('task-back').addEventListener('click', function () { hideModal($('task-modal')); });
   $('task-lobby').addEventListener('click', function (ev) {
     /* 点击空白处取消选择 */
@@ -2327,6 +2381,38 @@
       if (levelSet === null) levelSet = [];
       refreshSetBtn();
       openSetManager();
+      return;
+    }
+    if (q.indexOf('action=test-back') >= 0) {
+      /* 从“测试关卡”返回：恢复测试前的关卡集与当前关卡，不清除未保存状态 */
+      var traw = '', tnm = '', tidx = 0, tdir = '0';
+      try {
+        traw = localStorage.getItem('tlTestSetRaw') || '';
+        tnm = localStorage.getItem('tlTestSetName') || '';
+        tidx = parseInt(localStorage.getItem('tlTestIndex'), 10);
+        tdir = localStorage.getItem('tlTestDirty') || '0';
+        localStorage.removeItem('tlTestSetRaw');
+        localStorage.removeItem('tlTestSetName');
+        localStorage.removeItem('tlTestIndex');
+        localStorage.removeItem('tlTestDirty');
+      } catch (e) {}
+      try {
+        var tdata = JSON.parse(traw);
+        wsCtx = { fileName: tnm || sanitizeName('Levels') };
+        var tok = importSet(Array.isArray(tdata) ? tdata : [tdata], true);
+        if (tok) {
+          var ti = isNaN(tidx) ? 0 : tidx;
+          if (ti < 0 || ti >= levelSet.length) ti = 0;
+          switchToIndex(ti);
+          if (tdir === '1') wsDirty = true; else wsMarkClean();
+        } else {
+          wsCtx = null;
+        }
+      } catch (e2) {
+        wsCtx = null;
+        console.error('[workshop] 测试返回恢复失败', e2);
+        toast('无法恢复测试前的关卡集：' + (e2 && e2.message ? e2.message : e2));
+      }
       return;
     }
     if (q.indexOf('action=edit') >= 0) {

@@ -1273,7 +1273,7 @@
     page.classList.toggle('fc-suit-border', fcSettings.suitBorder && !fcSettings.twoColor);
     page.classList.toggle('fc-two-color-border', fcSettings.suitBorder && fcSettings.twoColor);
     document.documentElement.style.setProperty('--fc-win-scale', fcSettings.winScale);
-    if (timerEl) timerEl.classList.toggle('hidden', !fcSettings.timer);
+    /* 计时不在设置面板即时生效，统一由新局/重玩时应用 */
     var mmEl = $('kd-min-moves');
     if (mmEl) mmEl.classList.toggle('hidden', !fcSettings.showMinMoves);
     render();

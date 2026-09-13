@@ -1597,6 +1597,7 @@
     rules.allowSpec = toggleIsOn(ruleAllowSpec);
     rules.noChat = toggleIsOn(ruleNoChat);
     rules.allowPrivateChat = toggleIsOn(rulePrivateChat);
+    rules.open = false;   /* 进入等待界面默认不开放，由等待界面“开放”按钮手动开启 */
     try { localStorage.setItem('chessRules', JSON.stringify(rules)); } catch (e) {}
     chess.setRules({ noCastling: rules.noCastling, noPromotion: rules.noPromotion });
     updateUndoBtn();
