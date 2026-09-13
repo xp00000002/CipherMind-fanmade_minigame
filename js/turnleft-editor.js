@@ -1226,6 +1226,7 @@
   var wsCtx = null;            // { fileName }：编辑已有关卡集文件时非空
   var wsDirty = false;
   var wsDirHandle = null;      // 上次工坊打开的目录句柄（FS API + IndexedDB）
+  var bypassUnload = false;    // 主动跳转时跳过离开提示
   var wsSavedSnap = '';
   function wsSnapNow() {
     try { return JSON.stringify(levelSet === null ? null : levelSet); } catch (e) { return ''; }
@@ -1237,7 +1238,12 @@
     return wsSavedSnap !== wsSnapNow();
   }
   function wsGoBack() {
-    try { localStorage.setItem('tlOpenWorkshop', '1'); } catch (e) {}
+    bypassUnload = true;
+    try {
+      localStorage.setItem('tlOpenWorkshop', '1');
+      /* 从制作器退出：返回关卡集管理时应处于“编辑模式” */
+      localStorage.setItem('tlOpenWorkshopEdit', '1');
+    } catch (e) {}
     location.href = 'index.html';
   }
   function syncFolderCache(fname, data) {
@@ -1563,6 +1569,13 @@
   window.addEventListener('resize', function () {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(function () { applyEditorLayout(); if (stage) renderGrid(); if (updateSetScroll) updateSetScroll(); if (updateTaskScroll) updateTaskScroll(); }, 120);
+  });
+  window.addEventListener('beforeunload', function (e) {
+    if (bypassUnload) return;
+    if (!wsHasChanges()) return;
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
   });
 
   /* ==================== 可解性求解器（测试用） ==================== */
@@ -1968,6 +1981,25 @@
       n2.textContent = condArr(t).map(condLabel).join('、');
       row.appendChild(n1);
       row.appendChild(n2);
+      if (sel) {
+        var arrows = document.createElement('div');
+        arrows.className = 'room-arrows';
+        function mkArr(cls, disabled, delta) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'room-arrow-btn ' + cls;
+          b.disabled = disabled;
+          var im = document.createElement('img');
+          im.src = 'turnleft-texture/rightarrow.png';
+          im.alt = '';
+          b.appendChild(im);
+          b.addEventListener('click', function (ev) { ev.stopPropagation(); moveTask(t, delta); });
+          return b;
+        }
+        arrows.appendChild(mkArr('up', i === 0, -1));
+        arrows.appendChild(mkArr('down', i === arr.length - 1, 1));
+        row.appendChild(arrows);
+      }
       row.addEventListener('click', function (ev) {
         ev.stopPropagation();
         selTask = { index: i };
@@ -1990,6 +2022,18 @@
     renderTaskList();
     showModal($('task-modal'));
     setTimeout(function () { if (updateTaskScroll) updateTaskScroll(); }, 30);
+  }
+  function moveTask(t, delta) {
+    var arr = taskList();
+    if (!Array.isArray(arr)) return;
+    var i = arr.indexOf(t);
+    var j = i + delta;
+    if (i < 0 || j < 0 || j >= arr.length) return;
+    arr.splice(i, 1);
+    arr.splice(j, 0, t);
+    selTask = { index: j };
+    wsMark();
+    renderTaskList();
   }
   function askDeleteTask() {
     if (!selTask || selTask.index < 0) return;

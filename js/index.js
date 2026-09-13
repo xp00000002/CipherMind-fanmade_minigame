@@ -400,7 +400,7 @@
     { name: 'Endportal', g: 'TURNLEFT_ENDPORTAL_JSON' },
     { name: 'Island', g: 'TURNLEFT_ISLAND_JSON' },
     { name: 'Symmetrical', g: 'TURNLEFT_SYMMETRICAL_JSON' },
-    { name: 'Multi-Portal', g: 'TURNLEFT_MULTIPORTAL_JSON' },
+    { name: 'Multiportal', g: 'TURNLEFT_MULTIPORTAL_JSON' },
     { name: 'Giant', g: 'TURNLEFT_GIANT_JSON' }
   ];
   function openCampaignStats() {
@@ -970,6 +970,7 @@
   var bootWs = false;
   var bootCampaign = false;
   var bootFromPlay = false;
+  var bootWsEdit = false;
   try {
     if (localStorage.getItem('tlOpenWorkshop') === '1') {
       localStorage.removeItem('tlOpenWorkshop');
@@ -978,6 +979,10 @@
     if (localStorage.getItem('tlOpenWorkshopFromPlay') === '1') {
       localStorage.removeItem('tlOpenWorkshopFromPlay');
       bootFromPlay = true;
+    }
+    if (localStorage.getItem('tlOpenWorkshopEdit') === '1') {
+      localStorage.removeItem('tlOpenWorkshopEdit');
+      bootWsEdit = true;
     }
     if (location.search.indexOf('open=workshop') >= 0) bootWs = true;
     if (location.search.indexOf('open=campaign') >= 0) bootCampaign = true;
@@ -988,6 +993,12 @@
     applyGame();
     hide(startWrap);
     openTlSets(bootCampaign ? 'campaign' : 'workshop');
+    if (!bootCampaign && bootWsEdit) {
+      /* 从制作器退出：直接进入编辑模式 */
+      tlWorkshopEdit = true;
+      tlModeBtn.textContent = '编辑模式';
+      renderTlFooter();
+    }
     if (!bootCampaign) {
       refreshWorkshopFromHandle(function (ok) {
         if (ok || bootFromPlay || techNoticeSuppressed()) return;   /* 从游玩界面退出不提示 */

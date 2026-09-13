@@ -998,6 +998,12 @@
     var panel = $('task-panel');
     panel.innerHTML = '';
     var lvl = levels[curIdx];
+    var taskN = lvl && Array.isArray(lvl.tasks) ? lvl.tasks.length : 0;
+    var ct = $('challenge-title');
+    if (ct) {
+      ct.textContent = taskN === 0 ? '' : '任务挑战';
+      ct.classList.toggle('hidden', taskN === 0);
+    }
     if (!lvl || !lvl.tasks.length) {
       panel.innerHTML = '';
       return;
@@ -1391,12 +1397,14 @@
   }
   /* 闯关模式：记录本关完成与各任务完成情况 */
   function recordLevelResult() {
+    if (!winDone) return;                 /* 仅在胜利时记录 */
     if (!levels[curIdx]) return;
     var lvl = levels[curIdx];
     var results = [];
     (Array.isArray(lvl.tasks) ? lvl.tasks : []).forEach(function (task) {
       var conds = Array.isArray(task) ? task : [task];
-      var ok = conds.every(function (c) { return condState(c) === 'pass'; });
+      /* 任务的全部条件在胜利时均满足才算完成 */
+      var ok = conds.length > 0 && conds.every(function (c) { return condState(c) === 'pass'; });
       results.push(!!ok);
     });
     if (mode !== 'campaign') {
@@ -1442,7 +1450,18 @@
     $('quit-modal').classList.remove('hidden');
   });
   $('quit-cancel').addEventListener('click', function () { $('quit-modal').classList.add('hidden'); });
+  var bypassUnload = false;
+  window.addEventListener('beforeunload', function (e) {
+    if (mode !== 'workshop' || bypassUnload) return;
+    /* 仅在本会话已有成绩或当前局有进度时提示 */
+    var hasProgress = (state && state.steps > 0) || Object.keys(wsRecords).length > 0;
+    if (!hasProgress) return;
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  });
   $('quit-ok').addEventListener('click', function () {
+    bypassUnload = true;
     try {
       localStorage.setItem('tlOpenWorkshop', '1');
       localStorage.setItem('tlOpenWorkshopFromPlay', '1');
@@ -1466,19 +1485,25 @@
     var reach = function (idx) { return fullDex || idx < 0 || unlockedIdx >= idx; };
     var i31 = thresholdIdx('3-1'), i41 = thresholdIdx('4-1'), i51 = thresholdIdx('5-1'), i61 = thresholdIdx('6-1');
     var lateEnd = fullDex || (i51 >= 0 && unlockedIdx >= i51);
+    /* 过了 6-1（或特殊关卡集）后，传送门图鉴展示 portal2-4 的贴图 */
+    var campSaveDex = isMainCampaign ? readCampSave() : null;
+    var showP234 = fullDex || (i61 >= 0 && (unlockedIdx > i61 || !!(campSaveDex && campSaveDex.levels && campSaveDex.levels[i61] && campSaveDex.levels[i61].done)));
     var unit = 3;
-    function entry(img, natH, title, desc) {
+    function entry(imgs, natH, title, desc) {
+      if (!Array.isArray(imgs)) imgs = [imgs];
       var row = document.createElement('div');
       row.className = 'tl-dex-row';
       var head = document.createElement('div');
       head.className = 'tl-dex-head';
-      var im = document.createElement('img');
-      im.src = img;
-      im.style.height = (natH * unit) + 'px';
-      im.alt = title;
+      imgs.forEach(function (src) {
+        var im = document.createElement('img');
+        im.src = src;
+        im.style.height = (natH * unit) + 'px';
+        im.alt = title;
+        head.appendChild(im);
+      });
       var nm = document.createElement('span');
       nm.textContent = title;
-      head.appendChild(im);
       head.appendChild(nm);
       row.appendChild(head);
       var hr = document.createElement('hr');
@@ -1503,7 +1528,9 @@
       ? '终点是玩家的目标。玩家需要在经过所有任务线后到达终点以获得胜利。'
       : '终点是玩家的目标。玩家需要到达终点才可获得胜利。当然，在此之前，你可能需要先完成些什么...');
     if (reach(i31)) entry('turnleft-texture/arrowline.png', 7, '箭头线', '箭头线是一种特殊的线。玩家只能沿箭头指向的方向经过，而不能反向经过。');
-    if (reach(i41)) entry('turnleft-texture/portal1.png', 11, '传送门', '传送门是一种特殊的角点。玩家进入传送门时，会被传送至另一个传送门，且保持玩家当前的朝向。\n传送门可以和除它本身外的所有格点重合。对于重合点的判定，你可以记住：起点的优先级最高，而传送门的最低。');
+    if (reach(i41)) entry(showP234
+      ? ['turnleft-texture/portal1.png', 'turnleft-texture/portal2.png', 'turnleft-texture/portal3.png', 'turnleft-texture/portal4.png']
+      : 'turnleft-texture/portal1.png', 11, '传送门', '传送门是一种特殊的角点。玩家进入传送门时，会被传送至另一个传送门，且保持玩家当前的朝向。\n传送门可以和除它本身外的所有格点重合。对于重合点的判定，你可以记住：起点的优先级最高，而传送门的最低。');
     if (reach(i51)) entry('turnleft-texture/taskline.png', 3, '任务线', '任务线是一种特殊的线。玩家需要经过所有的任务线，才可在到达终点时胜利。\n任务线可以和其它的特殊线叠加。当一条线叠加了多种特殊线时，它会继承这些线的全部功能。');
     if (reach(i61)) entry('turnleft-texture/redline.png', 3, '红线', '红线是一种特殊的线。玩家只能经过它们一次，经过后它们会消失。');
     $('dex-modal').classList.remove('hidden');
@@ -1529,9 +1556,13 @@
       desc.className = 'room-rules';
       var dText = lvl.width + 'x' + lvl.height;
       var rec = levelRecord(i);
-      if (rec && typeof rec.best === 'number') dText += ' | 最佳步数' + rec.best + '步';
+      if (rec && typeof rec.best === 'number') {
+        dText += ' | 最佳步数' + rec.best + '步' + (lvl.minstep === rec.best ? '(理论值)' : '');
+      }
       if (rec && Array.isArray(rec.doneTasks) && rec.doneTasks.length) {
-        dText += ' | 已完成' + rec.doneTasks.length + '个任务';
+        var totTasks = taskCountOf(lvl);
+        if (totTasks > 0 && rec.doneTasks.length >= totTasks) dText += ' | 已完成全部' + totTasks + '个任务';
+        else dText += ' | 已完成' + rec.doneTasks.length + '个任务';
       }
       desc.textContent = dText;
       b.appendChild(bar);
@@ -1757,7 +1788,7 @@
       Endportal: 'TURNLEFT_ENDPORTAL_JSON',
       Island: 'TURNLEFT_ISLAND_JSON',
       Symmetrical: 'TURNLEFT_SYMMETRICAL_JSON',
-      'Multi-Portal': 'TURNLEFT_MULTIPORTAL_JSON',
+      'Multiportal': 'TURNLEFT_MULTIPORTAL_JSON',
       Giant: 'TURNLEFT_GIANT_JSON'
     };
     var pick = SPECIAL_G[setNameParam] ? window[SPECIAL_G[setNameParam]] : window.TURNLEFT_CAMPAIGN_JSON;

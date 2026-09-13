@@ -4954,3 +4954,39 @@ h1, h2, h3, b, strong { font-weight: 400; }
   margin: 0.1em calc(var(--sb) * 2 / 3);
   padding: 0.1em 0;
 }
+/* 同任务内条件行距缩小；不同任务间距保持不变 */
+.tl-play-page .task-cond { padding: 3px 0; }
+.tl-play-page .task-block + .task-block { margin-top: 8px; }
+/* 任务列表：与关卡列表一致的上下排序箭头 */
+#task-modal .room-arrows {
+  position: absolute;
+  right: 2.8%;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--sb);
+}
+#task-modal .room-arrow-btn {
+  width: calc(14cqh * 0.36);
+  height: calc(14cqh * 0.36);
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent !important;
+  cursor: pointer;
+}
+#task-modal .room-arrow-btn:disabled { opacity: 0.35; cursor: default; }
+#task-modal .room-arrow-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  pointer-events: none;
+}
+#task-modal .room-arrow-btn.up img { transform: rotate(-90deg); }
+#task-modal .room-arrow-btn.down img { transform: rotate(90deg); }
