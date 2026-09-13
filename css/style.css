@@ -410,12 +410,14 @@ body {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.25);
+  background: transparent;   /* 不遮挡页面背景（纯黑模式下尤为明显） */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 50;
 }
+/* 多弹窗叠加：只显示最顶层弹窗，底部弹窗临时隐藏（js/modal-stack.js 控制） */
+.modal.modal-stack-hidden { display: none !important; }
 .big-id {
   font-size: 26px;
   font-weight: 800;
@@ -3068,7 +3070,6 @@ body.chess-pre-game .game-layout { display: none; }
 .start-join-btn:disabled:hover { background: #000000D3; }
 /* ===== 纯黑模式：开启时所有 #000000XX / rgba(0,0,0,α) 转为纯黑 ===== */
 :where(html.pureblack) :root { --target: #000000; }
-:where(html.pureblack) .modal { background: #000000; }
 :where(html.pureblack) body.bg-image .start-wrap { background: #000000; }
 :where(html.pureblack) .start-page { background: #000000; }
 :where(html.pureblack) .start-foot .btn { background: #000000; }

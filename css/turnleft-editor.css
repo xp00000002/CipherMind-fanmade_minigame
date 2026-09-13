@@ -410,12 +410,14 @@ body {
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.25);
+  background: transparent;   /* ä¸é®æŒ¡é¡µé¢èƒŒæ™¯ï¼ˆçº¯é»‘æ¨¡å¼ä¸‹å°¤ä¸ºæ˜æ˜¾ï¼‰ */
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 50;
 }
+/* å¤šå¼¹çª—å åŠ ï¼šåªæ˜¾ç¤ºæœ€é¡¶å±‚å¼¹çª—ï¼Œåº•éƒ¨å¼¹çª—ä¸´æ—¶éšè—ï¼ˆjs/modal-stack.js æ§åˆ¶ï¼‰ */
+.modal.modal-stack-hidden { display: none !important; }
 .big-id {
   font-size: 26px;
   font-weight: 800;
@@ -4990,3 +4992,64 @@ h1, h2, h3, b, strong { font-weight: 400; }
 }
 #task-modal .room-arrow-btn.up img { transform: rotate(-90deg); }
 #task-modal .room-arrow-btn.down img { transform: rotate(90deg); }
+
+/* ===== ´¿ºÚÄ£Ê½£ºTurn Left Ò³Ãæ£¨Ãæ°å/µ¯´°/°´Å¥£©¸úËæÈ«¾ÖÉèÖÃ ===== */
+:where(html.pureblack) .btn { background: #000000; }
+:where(html.pureblack) .btn:hover { background: linear-gradient(rgba(255, 208, 56, 0.1), rgba(255, 208, 56, 0.1)), #000000; }
+:where(html.pureblack) .btn:disabled:hover { background: #000000; }
+:where(html.pureblack) .panel,
+:where(html.pureblack) .tl-play-page .panel.left,
+:where(html.pureblack) .tl-play-page .panel.right,
+:where(html.pureblack) .tl-play-page .board,
+:where(html.pureblack) .editor-page .workbench,
+:where(html.pureblack) .editor-page .tl-line,
+:where(html.pureblack) .editor-page .tl-point,
+:where(html.pureblack) .confirm-page,
+:where(html.pureblack) .settings-page,
+:where(html.pureblack) #set-modal .confirm-page,
+:where(html.pureblack) #task-modal .confirm-page,
+:where(html.pureblack) .set-page { background: #000000; }
+:where(html.pureblack) .set-scroll,
+:where(html.pureblack) .task-row:hover { background: #000000; }
+:where(html.pureblack) .start-foot .btn,
+:where(html.pureblack) .start-join-btn,
+:where(html.pureblack) .switch-arrow,
+:where(html.pureblack) .profile-btn,
+:where(html.pureblack) .room-btn,
+:where(html.pureblack) .confirm-foot .btn,
+:where(html.pureblack) .settings-foot .btn,
+:where(html.pureblack) .start-join-box .btn,
+:where(html.pureblack) .chat-player,
+:where(html.pureblack) .chat-option,
+:where(html.pureblack) .sp-difficulty-switch .switch-arrow,
+:where(html.pureblack) .bt-opt-bar .btn,
+:where(html.pureblack) .set-corner,
+:where(html.pureblack) .set-row-arrows .arr,
+:where(html.pureblack) #set-modal .room-arrow-btn,
+:where(html.pureblack) .task-add-cond,
+:where(html.pureblack) .cond-del-btn,
+:where(html.pureblack) .cond-act-row,
+:where(html.pureblack) #task-detail-modal .act-row,
+:where(html.pureblack) #task-detail-modal .sp-difficulty-switch .switch-arrow,
+:where(html.pureblack) .task-type-row select,
+:where(html.pureblack) .profile-preview,
+:where(html.pureblack) .avatar-opt,
+:where(html.pureblack) .profile-small { background: #000000; }
+:where(html.pureblack) .start-join-btn:disabled:hover,
+:where(html.pureblack) .bt-opt-bar .btn[disabled]:hover,
+:where(html.pureblack) .set-corner:disabled,
+:where(html.pureblack) .set-corner:disabled:hover,
+:where(html.pureblack) .set-row-arrows .arr:disabled,
+:where(html.pureblack) .set-row-arrows .arr:disabled:hover,
+:where(html.pureblack) #set-modal .profile-btn:disabled,
+:where(html.pureblack) #set-modal .profile-btn:disabled:hover,
+:where(html.pureblack) #btn-solve:disabled, :where(html.pureblack) #btn-solve:disabled:hover,
+:where(html.pureblack) #btn-undo:disabled, :where(html.pureblack) #btn-undo:disabled:hover,
+:where(html.pureblack) #btn-redo:disabled, :where(html.pureblack) #btn-redo:disabled:hover,
+:where(html.pureblack) #btn-clear:disabled, :where(html.pureblack) #btn-clear:disabled:hover,
+:where(html.pureblack) #btn-tasks:disabled, :where(html.pureblack) #btn-tasks:disabled:hover,
+:where(html.pureblack) #btn-batch:disabled, :where(html.pureblack) #btn-batch:disabled:hover,
+:where(html.pureblack) #btn-prev:disabled, :where(html.pureblack) #btn-prev:disabled:hover,
+:where(html.pureblack) #btn-next:disabled, :where(html.pureblack) #btn-next:disabled:hover { background: #000000; }
+/* µ¯´°ÕÚÕÖ²»ÕÚµ²Ò³Ãæ£¨ÓëÈ«¾Öµ¯´°Ò»ÖÂ£© */
+#set-modal { background: transparent; }
