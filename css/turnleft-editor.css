@@ -4241,8 +4241,8 @@ h1, h2, h3, b, strong { font-weight: 400; }
   margin-right: calc(-2 * var(--sb) - 6px);
 }
 #task-detail-modal .settings-body { font-size: clamp(14px, 5.5cqh, 26px); }
-/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ß½ï¿½ï¿½à£ºï¿½Ä±ß¾ï¿½ 1/3 ï¿½ß¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ï¿½Ğ¼ï¿½ï¿½Í¬ 1/3 */
-#task-detail-modal .settings-body { gap: calc(var(--sb) / 3); }
+/* ä»»åŠ¡è¯¦æƒ…è¡Œè·ä¸å…¶å®ƒè®¾ç½®é¡µç»Ÿä¸€ï¼ˆsettings-body gap 0.5emï¼‰ */
+#task-detail-modal .settings-body { gap: 0.5em; }
 #task-detail-modal .cond-block { margin: 0; padding: 0; }
 #task-detail-modal .act-row {
   width: auto;
@@ -4993,7 +4993,7 @@ h1, h2, h3, b, strong { font-weight: 400; }
 #task-modal .room-arrow-btn.up img { transform: rotate(-90deg); }
 #task-modal .room-arrow-btn.down img { transform: rotate(90deg); }
 
-/* ===== ´¿ºÚÄ£Ê½£ºTurn Left Ò³Ãæ£¨Ãæ°å/µ¯´°/°´Å¥£©¸úËæÈ«¾ÖÉèÖÃ ===== */
+/* ===== ï¿½ï¿½ï¿½ï¿½Ä£Ê½ï¿½ï¿½Turn Left Ò³ï¿½æ£¨ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½Å¥ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È«ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ===== */
 :where(html.pureblack) .btn { background: #000000; }
 :where(html.pureblack) .btn:hover { background: linear-gradient(rgba(255, 208, 56, 0.1), rgba(255, 208, 56, 0.1)), #000000; }
 :where(html.pureblack) .btn:disabled:hover { background: #000000; }
@@ -5051,5 +5051,5 @@ h1, h2, h3, b, strong { font-weight: 400; }
 :where(html.pureblack) #btn-batch:disabled, :where(html.pureblack) #btn-batch:disabled:hover,
 :where(html.pureblack) #btn-prev:disabled, :where(html.pureblack) #btn-prev:disabled:hover,
 :where(html.pureblack) #btn-next:disabled, :where(html.pureblack) #btn-next:disabled:hover { background: #000000; }
-/* µ¯´°ÕÚÕÖ²»ÕÚµ²Ò³Ãæ£¨ÓëÈ«¾Öµ¯´°Ò»ÖÂ£© */
+/* ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö²ï¿½ï¿½Úµï¿½Ò³ï¿½æ£¨ï¿½ï¿½È«ï¿½Öµï¿½ï¿½ï¿½Ò»ï¿½Â£ï¿½ */
 #set-modal { background: transparent; }
