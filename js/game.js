@@ -4,7 +4,7 @@
 
   var FILES = 'abcdefgh';
   var params = new URLSearchParams(location.search);
-  var mode = params.get('mode');
+  var mode = params.get('mode') === 'host' ? 'host' : 'join';   /* 未指定模式时按加入处理 */
   var joinId = params.get('id');
   var specMode = params.get('spec') === '1';   // 观战模式加入
 
@@ -25,6 +25,9 @@
 
   var chess = new Chess();
   var movesList = [];
+
+  /* 开局前隐藏棋盘与面板（等待/创建设置页期间） */
+  document.body.classList.add('chess-pre-game');
 
   var PIECE_IMAGES = {
     w: { p: 'texture/pawn2.png', n: 'texture/knight2.png', b: 'texture/bishop2.png', r: 'texture/rook2.png', q: 'texture/queen2.png', k: 'texture/king2.png' },
@@ -50,6 +53,14 @@
   // 开局规则（房主设定，发给对方）
   var rules = { timeLimit: 0, noCastling: false, noPromotion: false, noUndo: false, open: true, allowSpec: true, noChat: false, allowPrivateChat: false };
   var myPeerId = null;                    // 房主房间号（用于开放房间注册/注销）
+
+  // 等待界面（大厅）：开局前双方停留在房间成员界面
+  var inLobby = true;                     // 是否处于开局前大厅
+  var oppConnected = false;               // 房主：对手对局者已连接
+  var oppReady = false;                   // 房主：对手已准备
+  var myReady = false;                    // 己方（对局者）已准备
+  var guestLobbyList = null;              // 非房主：房主广播的房间成员列表
+
   var strikes = { w: 0, b: 0 };          // 各自累计超时次数
   var timerMs = { w: 0, b: 0 };          // 剩余毫秒
   var timerTick = null;
@@ -73,7 +84,11 @@
   var playerBottom = document.getElementById('player-bottom');
   var connStateEl = document.getElementById('conn-state');
   var waitModal = document.getElementById('wait-modal');
-  var peerIdModal = document.getElementById('peer-id-modal');
+  var waitBody = document.getElementById('wait-body');
+  var createModal = document.getElementById('create-modal');
+  var btnStartGame = document.getElementById('btn-start-game');
+  var btnReady = document.getElementById('btn-ready');
+  var btnOpenRoom = document.getElementById('btn-open-room');
   var promoModal = document.getElementById('promo-modal');
   var promoOptions = document.getElementById('promo-options');
   var confirmModal = document.getElementById('confirm-modal');
@@ -687,8 +702,43 @@
   function handleRemote(data) {
     // 观战者只处理走子/快照/选子显示与结束类消息，忽略玩家交互类消息
     if (isSpec && data.type !== 'move' && data.type !== 'snapshot' && data.type !== 'select' && data.type !== 'deselect' &&
-        data.type !== 'resign' && data.type !== 'accept-draw' && data.type !== 'spec-count' && data.type !== 'chat' && data.type !== 'roster') return;
+        data.type !== 'resign' && data.type !== 'accept-draw' && data.type !== 'spec-count' && data.type !== 'chat' && data.type !== 'roster' &&
+        data.type !== 'lobby' && data.type !== 'start') return;
     switch (data.type) {
+      case 'lobby':
+        guestLobbyList = (data && data.list) || [];
+        if (typeof data.open === 'boolean') {
+          rules.open = data.open;
+          if (!Net.isHost()) updateLobbyOpenBtn();
+        }
+        renderLobby();
+        break;
+      case 'lobby-ready':
+        if (Net.isHost()) {
+          oppReady = !!data.v;
+          broadcastLobby();
+        }
+        break;
+      case 'start':
+        if (inLobby && !Net.isHost()) {
+          if (data.rules) {
+            if (isSpec) {
+              /* 观战者只同步规则显示，不启动自己的计时 */
+              rules.timeLimit = data.rules.timeLimit || 0;
+              rules.noCastling = !!data.rules.noCastling;
+              rules.noPromotion = !!data.rules.noPromotion;
+              rules.noUndo = !!data.rules.noUndo;
+              rules.allowSpec = data.rules.allowSpec !== false;
+              rules.noChat = !!data.rules.noChat;
+              rules.allowPrivateChat = !!data.rules.allowPrivateChat;
+              chess.setRules({ noCastling: rules.noCastling, noPromotion: rules.noPromotion });
+            } else {
+              applyRules(data.rules);
+            }
+          }
+          startGame();
+        }
+        break;
       case 'chat':
         showChatMessage((data.from && (data.from.name || 'Player')) + '(' + chatRoleText(data.from && data.from.role) + ')', data.text);
         break;
@@ -710,6 +760,7 @@
           oppAvatarRaw = { avatar: data.profile.avatar, avatarData: data.profile.avatarData };
           broadcastRoster();   /* 成员名称更新 */
           updateUI();
+          if (inLobby) { if (Net.isHost()) broadcastLobby(); else renderLobby(); }
         }
         break;
       case 'config':
@@ -993,36 +1044,9 @@
     Net.send({ type: 'rematch-request' });
     toast('已发送再来一局请求');
   });
-  $('btn-wait-back').addEventListener('click', function () { location.href = 'index.html'; });
-  $('btn-copy-id').addEventListener('click', function () {
-    var id = peerIdModal.value || peerIdModal.textContent;
-    function fallback() {
-      var t = document.createElement('textarea');
-      t.value = id;
-      document.body.appendChild(t);
-      t.select();
-      try { document.execCommand('copy'); toast('已复制房间号'); } catch (e) { toast('复制失败，请手动复制'); }
-      document.body.removeChild(t);
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(id).then(function () { toast('已复制房间号'); }, fallback);
-    } else fallback();
-  });
-  var copyLinkButton = $('btn-copy-link');
-  if (copyLinkButton) copyLinkButton.addEventListener('click', function () {
-    var id = peerIdModal.value || peerIdModal.textContent;
-    var link = new URL('game.html', location.href);
-    link.search = '?mode=join&id=' + encodeURIComponent(id);
-    function fallback() {
-      var t = document.createElement('textarea');
-      t.value = link.href;
-      document.body.appendChild(t);
-      t.select();
-      try { document.execCommand('copy'); toast('已复制加入链接'); } catch (e) { toast('复制失败，请复制房间号'); }
-      document.body.removeChild(t);
-    }
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link.href).then(function () { toast('已复制加入链接'); }, fallback);
-    else fallback();
+  $('btn-wait-back').addEventListener('click', function () {
+    unregisterOpenRoom(myPeerId);
+    location.href = 'index.html';
   });
 
   /* ---------- 初始化 ---------- */
@@ -1184,12 +1208,12 @@
     document.getElementById('settings-scrollbar'),
     document.getElementById('settings-scrollbar-thumb')
   );
-  var updateRulesScrollbar = Profile.wireScrollbar(
-    document.getElementById('rules-body'),
-    document.getElementById('rules-scrollbar'),
-    document.getElementById('rules-scrollbar-thumb')
+  var updateCreateScrollbar = Profile.wireScrollbar(
+    document.getElementById('create-body'),
+    document.getElementById('create-scrollbar'),
+    document.getElementById('create-scrollbar-thumb')
   );
-  window.addEventListener('resize', function () { updateSettingsScrollbar(); updateRulesScrollbar(); });
+  window.addEventListener('resize', function () { updateSettingsScrollbar(); updateCreateScrollbar(); });
   $('btn-back-current').addEventListener('click', function () { reviewTo(moveLog.length); });
   $('btn-home').addEventListener('click', function () {
     try { sessionStorage.removeItem('cmchess-host-session'); } catch (e) {}
@@ -1515,14 +1539,12 @@
   initToggle('opt-material', 'chessOptMaterial', true, 'showMaterial');
   initToggle('opt-hide-chat', 'chessOptHideChat', false, 'hideChat');
 
-  /* 规则设置（房主，开局前） */
-  var rulesModal = document.getElementById('rules-modal');
+  /* 规则设置（房主，创建房间前设定） */
   var ruleTimeLimit = document.getElementById('rule-time-limit');
   var ruleTimeSec = document.getElementById('rule-time-sec');
   var ruleNoCastle = document.getElementById('rule-no-castle');
   var ruleNoPromo = document.getElementById('rule-no-promo');
   var ruleNoUndo = document.getElementById('rule-no-undo');
-  var ruleOpen = document.getElementById('rule-open');
   var ruleAllowSpec = document.getElementById('rule-allow-spec');
   var ruleNoChat = document.getElementById('rule-no-chat');
   var rulePrivateChat = document.getElementById('rule-private-chat');
@@ -1539,14 +1561,13 @@
       rules.allowPrivateChat = !!savedRules.allowPrivateChat;   /* 默认禁止私聊 */
     }
   } catch (e) {}
-  // 将当前生效的规则同步到弹窗 UI（用于初始显示与"关闭"重置）
+  // 将当前生效的规则同步到设置页 UI
   function syncRulesUI() {
     setToggle(ruleTimeLimit, rules.timeLimit > 0);
     ruleTimeSec.value = rules.timeLimit > 0 ? rules.timeLimit : 30;
     setToggle(ruleNoCastle, rules.noCastling);
     setToggle(ruleNoPromo, rules.noPromotion);
     setToggle(ruleNoUndo, rules.noUndo);
-    setToggle(ruleOpen, rules.open);
     setToggle(ruleAllowSpec, rules.allowSpec);
     setToggle(ruleNoChat, rules.noChat);
     setToggle(rulePrivateChat, rules.allowPrivateChat);
@@ -1560,15 +1581,198 @@
     rulePrivateChat.classList.toggle('disabled', noChat);
   }
   syncRulesUI();
-  [ruleTimeLimit, ruleNoCastle, ruleNoPromo, ruleNoUndo, ruleOpen, ruleAllowSpec, ruleNoChat, rulePrivateChat].forEach(function (el) {
+  [ruleTimeLimit, ruleNoCastle, ruleNoPromo, ruleNoUndo, ruleAllowSpec, ruleNoChat, rulePrivateChat].forEach(function (el) {
     el.addEventListener('click', function () {
       if (el === rulePrivateChat && toggleIsOn(ruleNoChat)) return;   /* 禁止发送消息时不可更改 */
       setToggle(el, !toggleIsOn(el));
       syncRulesDisabled();
     });
   });
+  /* 读取设置页 UI 到 rules 并保存 */
+  function applyRulesFromUI() {
+    rules.timeLimit = toggleIsOn(ruleTimeLimit) ? Math.max(3, parseInt(ruleTimeSec.value, 10) || 30) : 0;
+    rules.noCastling = toggleIsOn(ruleNoCastle);
+    rules.noPromotion = toggleIsOn(ruleNoPromo);
+    rules.noUndo = toggleIsOn(ruleNoUndo);
+    rules.allowSpec = toggleIsOn(ruleAllowSpec);
+    rules.noChat = toggleIsOn(ruleNoChat);
+    rules.allowPrivateChat = toggleIsOn(rulePrivateChat);
+    try { localStorage.setItem('chessRules', JSON.stringify(rules)); } catch (e) {}
+    chess.setRules({ noCastling: rules.noCastling, noPromotion: rules.noPromotion });
+    updateUndoBtn();
+  }
   chess.setRules({ noCastling: rules.noCastling, noPromotion: rules.noPromotion });
   updateUndoBtn();
+
+  /* ---------- 等待界面（大厅） ---------- */
+  function copyText(text, okMsg) {
+    function fallback() {
+      var t = document.createElement('textarea');
+      t.value = text;
+      document.body.appendChild(t);
+      t.select();
+      try { document.execCommand('copy'); toast(okMsg); } catch (e) { toast('复制失败，请手动复制'); }
+      document.body.removeChild(t);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { toast(okMsg); }, fallback);
+    else fallback();
+  }
+  /* 房主：当前房间成员（含观战者），用于名片展示与广播 */
+  function lobbyListForHost() {
+    var list = [{ role: 'w', name: myProfileName || 'Player #1', host: true, ready: true }];
+    if (oppConnected) list.push({ role: 'b', name: oppProfileName || 'Player #2', host: false, ready: oppReady });
+    Net.getSpecs().forEach(function (s) { list.push({ role: 'spec', name: s.name, host: false, ready: false }); });
+    return list;
+  }
+  function broadcastLobby() {
+    if (!Net.isHost()) return;
+    guestLobbyList = lobbyListForHost();
+    Net.send({ type: 'lobby', open: !!rules.open, list: guestLobbyList });
+    renderLobby();
+  }
+  function updateLobbyOpenBtn() {
+    if (!btnOpenRoom) return;
+    btnOpenRoom.disabled = !Net.isHost();
+    btnOpenRoom.textContent = rules.open ? '已开放' : '开放';
+  }
+  /* 渲染房间成员名片（参考炸金花等待界面） */
+  function renderLobby() {
+    if (!waitBody) return;
+    var list = Net.isHost() ? lobbyListForHost() : (guestLobbyList || []);
+    waitBody.innerHTML = '';
+    list.forEach(function (p) {
+      var card = document.createElement('div');
+      var meRole = myRole || (Net.isHost() ? 'w' : 'b');
+      card.className = 'zjh-pcard' + (!isSpec && p.role === meRole ? ' me' : '');
+      var name = document.createElement('div');
+      name.className = 'zjh-pname';
+      name.textContent = p.name || 'Player';
+      card.appendChild(name);
+      var hasIcon = false;
+      if (p.host) {
+        var ic = document.createElement('img');
+        ic.className = 'zjh-picon';
+        ic.src = 'texture/host.png';
+        card.appendChild(ic);
+        hasIcon = true;
+      } else if (p.ready && p.role !== 'spec') {
+        var ic2 = document.createElement('img');
+        ic2.className = 'zjh-picon';
+        ic2.src = 'texture/ready.png';
+        card.appendChild(ic2);
+        hasIcon = true;
+      }
+      /* 名字过长时动态缩小字号以装下 */
+      waitBody.appendChild(card);
+      var avail = card.clientWidth * (hasIcon ? (1 - 0.048 - 0.07 - 0.065) : 0.87);
+      var fs = parseFloat(getComputedStyle(name).fontSize) || 14;
+      var guard = 0;
+      while (name.scrollWidth > avail && fs > 6 && guard < 60) {
+        fs -= 0.5;
+        name.style.fontSize = fs + 'px';
+        guard++;
+      }
+    });
+    if (inLobby) {
+      if (Net.isHost()) {
+        btnStartGame.classList.remove('hidden');
+        btnReady.classList.add('hidden');
+        btnStartGame.disabled = !(oppConnected && oppReady);
+      } else if (isSpec) {
+        btnStartGame.classList.add('hidden');
+        btnReady.classList.add('hidden');
+      } else {
+        btnStartGame.classList.add('hidden');
+        btnReady.classList.remove('hidden');
+        btnReady.textContent = myReady ? '取消准备' : '准备';
+      }
+    }
+    updateLobbyOpenBtn();
+  }
+  /* 开局：房主点击开始游戏或收到房主开始消息后调用 */
+  function startGame() {
+    if (!inLobby) return;
+    inLobby = false;
+    document.body.classList.remove('chess-pre-game');
+    hideModal(waitModal);
+    hideModal(createModal);
+    hideModal(confirmModal);
+    hideModal(promoModal);
+    connectionEstablished = true;
+    setConnState('已连接');
+    if (isSpec) {
+      setSpecMode(true);
+      var oppLabel = document.getElementById('opt-oppmoves-label');
+      if (oppLabel) oppLabel.textContent = '显示双方选子';
+      updateUI();
+      toast('你正在观战');
+      return;
+    }
+    chess.setRules({ noCastling: rules.noCastling, noPromotion: rules.noPromotion });
+    updateUndoBtn();
+    if (Net.isHost() && myPeerId && rules.open && rules.allowSpec) registerOpenRoom(myPeerId, true);
+    if (rules.timeLimit > 0) {
+      timerMs.w = rules.timeLimit * 1000;
+      timerMs.b = rules.timeLimit * 1000;
+      startTimer();
+    }
+    updateUI();
+    toast(myRole === 'w' ? '你执白棋，先手' : '你执黑棋，后手');
+  }
+  if (btnOpenRoom) btnOpenRoom.addEventListener('click', function () {
+    if (!Net.isHost()) return;
+    rules.open = !rules.open;
+    try { localStorage.setItem('chessRules', JSON.stringify(rules)); } catch (e) {}
+    syncOpenRoom();
+    updateLobbyOpenBtn();
+    broadcastLobby();
+  });
+  var roomCodeBtn = document.getElementById('btn-room-code');
+  if (roomCodeBtn) roomCodeBtn.addEventListener('click', function () {
+    if (this.dataset.shown) {
+      delete this.dataset.shown;
+      this.textContent = '房间号码';
+      return;
+    }
+    var rid = Net.isHost() ? (myPeerId || '') : (joinId || '');
+    copyText(rid, '已复制房间号码');
+    this.textContent = rid;
+    this.dataset.shown = '1';
+  });
+  var inviteLinkBtn = document.getElementById('btn-copy-link');
+  var inviteLinkTimer = null;
+  if (inviteLinkBtn) inviteLinkBtn.addEventListener('click', function () {
+    var rid = Net.isHost() ? (myPeerId || '') : (joinId || '');
+    var link = new URL('game.html', location.href);
+    link.search = '?mode=join&id=' + encodeURIComponent(rid);
+    copyText(link.href, '已复制邀请链接');
+    this.textContent = '已复制';
+    clearTimeout(inviteLinkTimer);
+    var self = this;
+    inviteLinkTimer = setTimeout(function () { self.textContent = '复制邀请链接'; }, 5000);
+  });
+  btnStartGame.addEventListener('click', function () {
+    if (!Net.isHost()) return;
+    if (!oppConnected) { toast('等待对手加入'); return; }
+    if (!oppReady) { toast('对手尚未准备'); return; }
+    Net.send({ type: 'start', rules: rules });
+    startGame();
+  });
+  btnReady.addEventListener('click', function () {
+    if (Net.isHost() || isSpec) return;
+    myReady = !myReady;
+    Net.send({ type: 'lobby-ready', v: myReady });
+    if (guestLobbyList) {
+      guestLobbyList.forEach(function (p) { if (p.role === 'b') p.ready = myReady; });
+    }
+    renderLobby();
+  });
+  $('btn-create-back').addEventListener('click', function () { location.href = 'index.html'; });
+  $('btn-create-room').addEventListener('click', function () {
+    applyRulesFromUI();
+    hideModal(createModal);
+    connectNet();
+  });
 
   // 开放房间注册（本地模拟，供测试）：房主创建开放房间时写入列表，3 分钟过期
   function openRoomSummary() {
@@ -1608,7 +1812,7 @@
   function syncOpenRoom() {
     if (!Net.isHost() || !myPeerId) return;
     if (rules.open) {
-      if (rules.allowSpec) registerOpenRoom(myPeerId, !!playerConnActive());
+      if (rules.allowSpec) registerOpenRoom(myPeerId, !inLobby);   /* 仅开局后才标记为已开局 */
       else unregisterOpenRoom(myPeerId);   /* 不允许观战：房间不再公开 */
     } else {
       unregisterOpenRoom(myPeerId);
@@ -1621,33 +1825,6 @@
     return Net.isHost() && !!role;   /* host 拿到角色即已配对 */
   }
 
-  $('btn-rules').addEventListener('click', function () { showModal(rulesModal); updateRulesScrollbar(); });
-  Profile.wireModalOutsideClick(rulesModal, function () { syncRulesUI(); hideModal(rulesModal); });
-  $('btn-rules-close').addEventListener('click', function () { syncRulesUI(); hideModal(rulesModal); });
-  $('btn-rules-apply').addEventListener('click', function () {
-    rules.timeLimit = toggleIsOn(ruleTimeLimit) ? Math.max(3, parseInt(ruleTimeSec.value, 10) || 30) : 0;
-    rules.noCastling = toggleIsOn(ruleNoCastle);
-    rules.noPromotion = toggleIsOn(ruleNoPromo);
-    rules.noUndo = toggleIsOn(ruleNoUndo);
-    rules.open = toggleIsOn(ruleOpen);
-    rules.allowSpec = toggleIsOn(ruleAllowSpec);
-    rules.noChat = toggleIsOn(ruleNoChat);
-    rules.allowPrivateChat = toggleIsOn(rulePrivateChat);
-    try { localStorage.setItem('chessRules', JSON.stringify(rules)); } catch (e) {}
-    chess.setRules({ noCastling: rules.noCastling, noPromotion: rules.noPromotion });
-    updateUndoBtn();
-    syncOpenRoom();   /* 开放状态变化即时同步注册 */
-    if (myRole) Net.send({ type: 'config', rules: rules });
-    if (rules.timeLimit > 0) {
-      if (myRole) { timerMs.w = rules.timeLimit * 1000; timerMs.b = rules.timeLimit * 1000; startTimer(); }
-    } else {
-      stopTimer();
-    }
-    hideModal(rulesModal);
-    toast('规则已应用：' + ruleSummary());
-    updateUI();
-  });
-
   loadProfile();
   var nicknameInput = document.getElementById('game-nickname');
   if (nicknameInput) nicknameInput.value = Profile.get().name || '';
@@ -1659,7 +1836,8 @@
     unregisterOpenRoom(myPeerId);
   });
 
-  Net.connect({
+  function connectNet() {
+    Net.connect({
     mode: mode,
     hostId: mode === 'join' ? joinId : undefined,
     want: specMode ? 'spec' : 'play',   /* 观战模式加入 */
@@ -1678,59 +1856,53 @@
     onId: function (id) {
       myPeerId = id;
       if (Net.isHost() && !myProfileName) myProfileName = 'Player #1';
-      peerIdModal.value = id;
-      if (Net.isHost() && rules.open) registerOpenRoom(id);   /* 开放房间登记 */
+      if (Net.isHost()) syncOpenRoom();   /* 开放房间登记（等待中标记为未开局） */
       showModal(waitModal);
+      renderLobby();
     },
     onSpecJoin: function (c) {
       /* 观战者加入：发送对局快照（随后走子消息自动转发） */
       c.send(buildSnapshot());
+      if (!inLobby) c.send({ type: 'start', rules: rules });   /* 对局中：让新观战者直接进入观战 */
       broadcastRoster();   /* 成员列表更新 */
+      if (inLobby) broadcastLobby();
     },
     onSpecCount: function (n) {
       /* 观战人数变化：连接状态旁显示，并更新成员列表 */
       updateSpecCount(n);
       broadcastRoster();
+      if (inLobby) broadcastLobby();
     },
     onSpecRename: function () {
       broadcastRoster();
+      if (inLobby) broadcastLobby();
     },
     onOpen: function (role) {
       myRole = role;
-      connectionEstablished = true;
-      hideModal(waitModal);
-      hideModal(confirmModal);
-      hideModal(promoModal);
-      setConnState('已连接');
+      /* 观战者：直接进入等待界面（观战视角） */
       if (role === 'spec') {
-        /* 观战模式：禁操作、可随时返回主界面、可查看历史 */
         isSpec = true;
         setSpecMode(true);
-        var oppLabel = document.getElementById('opt-oppmoves-label');
-        if (oppLabel) oppLabel.textContent = '显示双方选子';   /* 观战视角显示双方选子 */
-        updateUI();
-        toast('你正在观战');
+        var oppLabel0 = document.getElementById('opt-oppmoves-label');
+        if (oppLabel0) oppLabel0.textContent = '显示双方选子';   /* 观战视角显示双方选子 */
+        showModal(waitModal);
+        renderLobby();
         return;
       }
+      connectionEstablished = true;
+      setConnState('已连接');
       if (Net.isHost()) {
-        // 房主：对局开始，更新开放房间为已开局（不允许观战时从列表移除）
-        if (myPeerId && rules.open) {
-          if (rules.allowSpec) registerOpenRoom(myPeerId, true);
-          else unregisterOpenRoom(myPeerId);
-        }
+        oppConnected = true;
+        oppReady = false;
         broadcastRoster();   /* 成员列表更新 */
-        // 房主将规则发送给对方并应用
-        Net.send({ type: 'config', rules: rules });
-        chess.setRules({ noCastling: rules.noCastling, noPromotion: rules.noPromotion });
-        if (rules.timeLimit > 0) {
-          timerMs.w = rules.timeLimit * 1000;
-          timerMs.b = rules.timeLimit * 1000;
-          startTimer();
-        }
+        sendProfile();       /* 双方共享名称/头像 */
+        broadcastLobby();    /* 广播等待界面成员状态 */
+      } else {
+        sendProfile();
       }
-      sendProfile();   // 双方共享名称/头像
+      showModal(waitModal);
+      renderLobby();
       updateUI();
-      toast(role === 'w' ? '你执白棋，先手' : '你执黑棋，后手');
     },
     onMessage: handleRemote,
     onState: function (state) {
@@ -1739,7 +1911,20 @@
       else if (state === 'open') setConnState('已连接');
       else if (state === 'closed') {
         setConnState('连接已断开');
-        if (connectionEstablished && !gameOver) {
+        if (inLobby) {
+          if (Net.isHost()) {
+            oppConnected = false;
+            oppReady = false;
+            oppProfileName = '';
+            broadcastLobby();
+            toast('对手已离开房间');
+          } else {
+            showPrompt('连接已断开', isSpec ? '与房主的连接中断，无法继续观战' : '房主已离开或连接中断',
+              function () { location.href = 'index.html'; },
+              function () { hideModal(confirmModal); },
+              '返回主界面', '留在此页');
+          }
+        } else if (connectionEstablished && !gameOver) {
           // 对局中连接断开：提示类弹窗；对局已结束则不再叠加提示（游戏结束弹窗已在显示）
           showDisconnected();
         }
@@ -1763,6 +1948,16 @@
         }
       }
     }
-  });
+    });
+  }
+
+  /* 房主：先显示创建房间设置页；加入方：直接连接进入等待界面 */
+  if (mode === 'join') {
+    connectNet();
+  } else {
+    syncRulesUI();
+    showModal(createModal);
+    updateCreateScrollbar();
+  }
 })();
 

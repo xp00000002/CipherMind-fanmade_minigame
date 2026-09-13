@@ -79,6 +79,23 @@
   var dealTimer = null;  // 无人叫地主重发牌定时器
   var settings = { counter: true, baseScore: 1, mode: 'single', roundLimit: false, roundCount: 3, startScore: 1000, noChat: false, allowPrivateChat: false, allowSpec: true };  // 房主开局选项（创建房间时设置，随 lobby/state 广播）
   var settingsBackup = null;   // 创建房间设置备份（返回时恢复）
+  /* 记住上次的开局设置（创建房间前可修改，确认创建后保存） */
+  try {
+    var savedCreate = JSON.parse(localStorage.getItem('btCreateSettings'));
+    if (savedCreate && typeof savedCreate === 'object') {
+      Object.keys(settings).forEach(function (k) {
+        if (!Object.prototype.hasOwnProperty.call(savedCreate, k)) return;
+        if (k === 'mode') {
+          if (['single', 'multi', 'points'].indexOf(savedCreate[k]) >= 0) settings[k] = savedCreate[k];
+          return;
+        }
+        if (typeof savedCreate[k] === typeof settings[k]) settings[k] = savedCreate[k];
+      });
+    }
+  } catch (e) {}
+  function saveCreateSettings() {
+    try { localStorage.setItem('btCreateSettings', JSON.stringify(settings)); } catch (e) {}
+  }
   /* 多局/积分模式会话（房主权威，随 state 广播）：
      mode=multi 起始 0 分、mode=points 起始 startScore 分；
      round=已完成局数；wins/losses=全局倍率的胜负记录；over=会话结束 */
@@ -875,6 +892,7 @@
   });
   $('btn-bt-create').addEventListener('click', function () {
     hideModal($('bt-create-modal'));
+    saveCreateSettings();   /* 记住本次开局设置 */
     hostBroadcastLobby();
     showWait();
   });

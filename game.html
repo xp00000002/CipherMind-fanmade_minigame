@@ -6,7 +6,7 @@
   <title>国际象棋 · 对局</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
+<body class="chess-pre-game">
   <div class="game-layout">
     <aside class="panel left">
       <div class="player-card" id="player-top"></div>
@@ -87,31 +87,33 @@
     </div>
   </div>
 
-  <!-- 等待对手加入 -->
+  <!-- 等待界面（房间成员） -->
   <div id="wait-modal" class="modal hidden">
     <div class="confirm-page">
-      <button id="btn-wait-back" class="start-join-btn" type="button">返回</button>
-      <div class="confirm-frame">
-        <div class="confirm-title">等待对手加入</div>
-        <div class="confirm-body">
-          <input id="peer-id-modal" class="wait-id" type="text" readonly value="—">
-          <p class="confirm-text wait-tip">将你的房间号发送给对方</p>
+      <div class="zjh-wait-head">
+        <button id="btn-open-room" class="start-join-btn" type="button">开放</button>
+        <div class="zjh-wait-right">
+          <button id="btn-room-code" class="start-join-btn" type="button">房间号码</button>
+          <button id="btn-copy-link" class="start-join-btn" type="button">复制邀请链接</button>
         </div>
+      </div>
+      <div class="confirm-frame">
+        <div class="zjh-wait-body" id="wait-body"></div>
         <div class="confirm-foot">
-          <button id="btn-copy-id" class="btn">复制房间号</button>
-          <button id="btn-copy-link" class="btn">复制加入链接</button>
-          <button id="btn-rules" class="btn">规则设置</button>
+          <button id="btn-wait-back" class="btn">返回</button>
+          <button id="btn-start-game" class="btn">开始游戏</button>
+          <button id="btn-ready" class="btn hidden">准备</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 规则设置（房主设置，开局前生效） -->
-  <div id="rules-modal" class="modal hidden">
+  <!-- 创建房间设置页（房主开局规则，创建房间前设定） -->
+  <div id="create-modal" class="modal hidden">
     <div class="settings-page">
       <div class="settings-frame">
         <div class="settings-scroll">
-          <div class="settings-body" id="rules-body">
+          <div class="settings-body" id="create-body">
             <div class="setting-row toggle-row">
               <span class="setting-label">限制每步时间</span>
               <button type="button" class="toggle" id="rule-time-limit"><img src="texture/toggleoff.png" alt="off"></button>
@@ -133,10 +135,6 @@
               <button type="button" class="toggle" id="rule-no-undo"><img src="texture/toggleoff.png" alt="off"></button>
             </div>
             <div class="setting-row toggle-row">
-              <span class="setting-label">将房间设为开放</span>
-              <button type="button" class="toggle" id="rule-open"><img src="texture/toggleoff.png" alt="off"></button>
-            </div>
-            <div class="setting-row toggle-row">
               <span class="setting-label">允许观战</span>
               <button type="button" class="toggle" id="rule-allow-spec"><img src="texture/toggleoff.png" alt="off"></button>
             </div>
@@ -149,13 +147,13 @@
               <button type="button" class="toggle" id="rule-private-chat"><img src="texture/toggleoff.png" alt="off"></button>
             </div>
           </div>
-          <div class="settings-scrollbar" id="rules-scrollbar">
-            <div class="settings-scrollbar-thumb" id="rules-scrollbar-thumb"></div>
+          <div class="settings-scrollbar" id="create-scrollbar">
+            <div class="settings-scrollbar-thumb" id="create-scrollbar-thumb"></div>
           </div>
         </div>
         <div class="settings-foot">
-          <button id="btn-rules-apply" class="btn">应用</button>
-          <button id="btn-rules-close" class="btn">关闭</button>
+          <button id="btn-create-back" class="btn">返回</button>
+          <button id="btn-create-room" class="btn">创建房间</button>
         </div>
       </div>
     </div>
@@ -192,6 +190,7 @@
   <!-- 设置 -->
   <div id="settings-modal" class="modal hidden">
     <div class="settings-page">
+      <button id="btn-settings-close" class="start-join-btn" type="button">返回</button>
       <div class="settings-frame">
         <div class="settings-scroll">
           <div class="settings-body" id="settings-body">
@@ -246,7 +245,6 @@
         <div class="settings-foot">
           <button id="btn-scale-reset" class="btn">恢复默认</button>
           <button id="btn-nickname-save" class="btn">保存昵称</button>
-          <button id="btn-settings-close" class="btn">返回</button>
         </div>
       </div>
     </div>

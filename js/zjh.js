@@ -48,6 +48,18 @@
   var myName = (Profile.get() || {}).name || 'Player';
 
   var settings = { allow235: false, timeLimit: false, timeSec: 30, startScore: 1000, dealer: false, showScores: true };
+  /* 记住上次的开局设置（创建房间前可修改，确认创建后保存） */
+  try {
+    var savedCreate = JSON.parse(localStorage.getItem('zjhCreateSettings'));
+    if (savedCreate && typeof savedCreate === 'object') {
+      Object.keys(settings).forEach(function (k) {
+        if (Object.prototype.hasOwnProperty.call(savedCreate, k) && typeof savedCreate[k] === typeof settings[k]) settings[k] = savedCreate[k];
+      });
+    }
+  } catch (e) {}
+  function saveCreateSettings() {
+    try { localStorage.setItem('zjhCreateSettings', JSON.stringify(settings)); } catch (e) {}
+  }
   var players = [];      // 大厅：{id, name, ready, host}
   var game = null;       // 对局：{order:[id], turn, bet, pot, phase, players:[{id,name,score,cards,seen,folded,bet,allin,hasSeen}], timerEnd}
   var myIndex = -1;      // 我在 game.players 中的下标
@@ -403,6 +415,7 @@
   });
   $('btn-zjh-create').addEventListener('click', function () {
     hideModal($('zjh-create-modal'));
+    saveCreateSettings();   /* 记住本次开局设置 */
     if (isHost) {
       if (settings.dealer) {
         players.forEach(function (p) { p.score = settings.startScore * (players.length - 1); });
