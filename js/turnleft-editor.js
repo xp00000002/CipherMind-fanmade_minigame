@@ -1795,10 +1795,10 @@
       if (!cc) return;
       conds.push(cc);
     }
-    /* 步数条件决定枚举上下限，其余条件在胜利时过滤 */
+    /* 仅“限制步数”条件决定枚举上下限，其余条件在胜利时过滤 */
     var mn = 0, mx = 200;
     conds.forEach(function (c) {
-      if (c.type === 1 || c.type === 5) return;
+      if (c.type !== 0) return;
       if (c.minstep > mn) mn = c.minstep;
       if (c.maxstep !== null && c.maxstep !== undefined && c.maxstep < mx) mx = c.maxstep;
     });
@@ -1861,9 +1861,16 @@
         portalPair[list[1][0] + ',' + list[1][1]] = list[0];
       }
     }
+    /* 左转/传送门条件：把计数纳入状态去重，并按最大值剪枝 */
+    var useLeft = false, usePortal = false, leftMax = null, portalMax = null;
+    conds.forEach(function (c) {
+      if (c.type === 2) { useLeft = true; if (c.maxstep !== null && c.maxstep !== undefined) leftMax = c.maxstep; }
+      if (c.type === 4) { usePortal = true; if (c.maxstep !== null && c.maxstep !== undefined) portalMax = c.maxstep; }
+    });
+    function popcount(v) { var c = 0; while (v) { c += v & 1; v >>= 1; } return c; }
     var endKey = null;
     void endKey;
-    function explore(x, y, face, tasks, reds, steps) {
+    function explore(x, y, face, tasks, reds, lefts, portals, steps) {
       if (solutions.length >= SOLVE_CAP) return;
       if (steps >= mx) return;
       var tryDirs = face < 0 ? [0, 1, 2, 3] : [face, (face + 1) % 4];
@@ -1898,33 +1905,33 @@
         if (tp) line += ' → 传送门落点(' + fx + ',' + fy + ')';
         var total = steps + 1;
         var rec = { left: face >= 0 && d !== face ? 1 : 0, red: meta.red ? 1 : 0, portal: tp ? 1 : 0, zh: D.zh };
+        var lefts2 = lefts + rec.left, portals2 = portals + rec.portal;
+        if (leftMax !== null && lefts2 > leftMax) continue;
+        if (portalMax !== null && portals2 > portalMax) continue;
         if (won) {
-          var cRed = rec.red, cLeft = rec.left, cPortal = rec.portal;
-          pathSteps.forEach(function (r) { cRed += r.red; cLeft += r.left; cPortal += r.portal; });
-          if (total >= mn && total <= mx && condsPass(total, cRed, cLeft, cPortal, d)) {
+          if (total >= mn && total <= mx && condsPass(total, popcount(reds2), lefts2, portals2, d)) {
             solutions.push({
               lines: pathLines.slice(1).concat([line]),
               len: total,
-              red: cRed,
-              left: cLeft,
-              portal: cPortal,
+              red: popcount(reds2),
+              left: lefts2,
+              portal: portals2,
               face: D.zh
             });
           }
           continue;   /* 胜利即结束该分支 */
         }
-        var vkey = fx + ',' + fy + '|' + d + '|' + tasks2 + '|' + reds2;
-        if (visitedPath[vkey]) continue;
-        visitedPath[vkey] = true;
+        var vkey = fx + ',' + fy + '|' + d + '|' + tasks2 + '|' + reds2 + (useLeft ? '|' + lefts2 : '') + (usePortal ? '|' + portals2 : '');
+        if (visitedPath[vkey] !== undefined) continue;
+        visitedPath[vkey] = total;
         pathLines.push(line);
         pathSteps.push(rec);
-        explore(fx, fy, d, tasks2, reds2, total);
+        explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total);
         pathLines.pop();
         pathSteps.pop();
-        delete visitedPath[vkey];
       }
     }
-    explore(sx, sy, -1, 0, 0, 0);
+    explore(sx, sy, -1, 0, 0, 0, 0, 0);
 
     var out = [];
     out.push('关卡：' + (currentItem.name || 'level'));
