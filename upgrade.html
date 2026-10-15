@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upgrade · 升级</title>
+  <link rel="stylesheet" href="css/style.css?v=20260926">
+</head>
+<body class="upgrade-page">
+  <div class="game-layout">
+    <aside class="panel left">
+      <div class="status-box">
+        <div id="up-status" class="status">准备中…</div>
+        <div id="up-status-sub" class="status bt-status-mult"></div>
+      </div>
+      <div class="controls" id="up-controls">
+        <button id="btn-up-settings" class="btn">设置</button>
+        <button id="btn-up-declare" class="btn hidden">亮主</button>
+        <button id="btn-up-counter" class="btn hidden">反主</button>
+        <button id="btn-up-play" class="btn hidden">出牌(enter)</button>
+        <button id="btn-up-discard" class="btn hidden">确认弃牌</button>
+        <button id="btn-up-home" class="btn hidden">返回主界面</button>
+      </div>
+    </aside>
+
+    <main class="board-area">
+      <div class="board-wrap">
+        <div id="up-table" class="battle-table upgrade-table">
+          <div id="up-tip" class="bt-tip"></div>
+          <div id="up-trump" class="up-trump"></div>
+          <div id="up-declare-bar" class="up-declare-bar hidden"></div>
+          <div id="up-bottom" class="bt-bottom"></div>
+          <div id="up-center" class="bt-center"></div>
+          <div id="up-seat-1" class="bt-seat" data-seat="1"></div>
+          <div id="up-seat-2" class="bt-seat" data-seat="2"></div>
+          <div id="up-seat-3" class="bt-seat" data-seat="3"></div>
+          <div id="up-seat-4" class="bt-seat" data-seat="4"></div>
+          <div id="up-seat-5" class="bt-seat" data-seat="5"></div>
+          <div id="up-seat-6" class="bt-seat" data-seat="6"></div>
+          <div id="up-seat-7" class="bt-seat" data-seat="7"></div>
+          <div id="up-seat-8" class="bt-seat" data-seat="8"></div>
+          <div id="up-doll-info" class="bt-doll-info hidden" data-seat="3">
+            <div class="bt-doll-info-head">
+              <span class="bt-doll-info-avatar"></span>
+              <span class="bt-doll-info-name"></span>
+            </div>
+            <div class="bt-doll-info-row">身份：<b class="bt-doll-info-role"></b></div>
+            <div class="bt-doll-info-row">状态：<b class="bt-doll-info-turn"></b></div>
+            <div class="bt-doll-info-row">剩余牌数：<b class="bt-doll-info-cards"></b></div>
+            <div class="bt-doll-info-row">级牌：<b class="bt-doll-info-level"></b></div>
+            <div class="bt-doll-info-row">分数：<b class="bt-doll-info-score"></b></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel right">
+      <div class="bt-player-list" id="up-player-panel"></div>
+    </aside>
+
+    <div id="up-hand" class="bt-hand"></div>
+
+    <div class="top-panel"></div>
+    <div class="bottom-panel"></div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <div id="chat-layer" class="chat-layer"></div>
+
+  <!-- 创建房间设置页（房主开局选项，仿 battle） -->
+  <div id="up-create-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="up-create-settings-body">
+            <div class="setting-row">
+              <span class="setting-label">游戏人数</span>
+              <div class="sp-difficulty-switch" id="up-count-select">
+                <button type="button" class="switch-arrow" id="up-count-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="<"></button>
+                <span id="up-count-label" class="switch-label">4 人</span>
+                <button type="button" class="switch-arrow" id="up-count-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-up-create-back" class="btn">返回</button>
+          <button id="btn-up-create" class="btn">创建房间</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 等待界面（房间成员） -->
+  <div id="up-wait-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="zjh-wait-head">
+        <button id="up-open-btn" class="start-join-btn" type="button">开放</button>
+        <div class="zjh-wait-right">
+          <button id="up-roomcode-btn" class="start-join-btn" type="button">房间号码</button>
+          <button id="up-copylink-btn" class="start-join-btn" type="button">复制邀请链接</button>
+        </div>
+      </div>
+      <div class="confirm-frame">
+        <div class="zjh-wait-body" id="up-wait-body"></div>
+        <div class="confirm-foot">
+          <button id="btn-up-wait-back" class="btn">返回</button>
+          <button id="btn-up-start" class="btn">开始游戏</button>
+          <button id="btn-up-ready" class="btn hidden">准备</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 房间码 -->
+  <div id="up-code-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">房间码</div>
+        <div class="confirm-body">
+          <input id="up-code-input" class="wait-id" type="text" readonly value="—">
+          <p class="confirm-text wait-tip">将你的房间码发送给对方</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-up-copy-id" class="btn">复制房间码</button>
+          <button id="btn-up-code-back" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 设置 -->
+  <div id="up-settings-modal" class="modal hidden">
+    <div class="settings-page">
+      <button id="btn-up-settings-back" class="start-join-btn" type="button">返回</button>
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="up-settings-body">
+            <div class="setting-row slider-row">
+              <span class="setting-label">牌桌缩放</span>
+              <span id="up-scale-label" class="setting-value">100%</span>
+              <input id="up-scale" type="range" min="40" max="200" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">手牌大小</span>
+              <span id="up-hand-scale-label" class="setting-value">100%</span>
+              <input id="up-hand-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">面板缩放</span>
+              <span id="up-panel-scale-label" class="setting-value">100%</span>
+              <input id="up-panel-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">牌面透明</span>
+              <button type="button" class="toggle" id="up-opt-transparent"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">边框提示花色</span>
+              <button type="button" class="toggle" id="up-opt-suitborder"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">双色模式</span>
+              <button type="button" class="toggle" id="up-opt-twocolor"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-up-settings-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 会话结算 -->
+  <div id="up-result-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="up-result-title">本局结束</div>
+        <div class="confirm-body">
+          <div id="up-result-text" class="confirm-text"></div>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-up-next-round" class="btn">开始下一局</button>
+          <button id="btn-up-result-home" class="btn">返回主界面</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示 / 确认 -->
+  <div id="up-prompt-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title" id="up-prompt-title">提示</div>
+        <div class="confirm-body">
+          <p id="up-prompt-text" class="confirm-text"></p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-up-prompt-home" class="btn hidden">返回主界面</button>
+          <button id="btn-up-prompt-ok" class="btn">确定</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/modal-stack.js"></script>
+  <script src="js/upgrade.js?v=20260926"></script>
+</body>
+</html>

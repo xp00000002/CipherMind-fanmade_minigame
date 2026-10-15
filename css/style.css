@@ -2891,7 +2891,7 @@ body.chess-pre-game .game-layout { display: none; }
 .fc-two-color-border .bt-spec-cards .fc-card[data-suit="d"] { box-shadow: inset 0 0 0 calc(var(--fc-c) / 20) #E53D3D; }
 .fc-solid-cards .bt-spec-cards .fc-card { background: #000; }
 /* 观战视角：1 号位剩余牌数置于牌桌内底部；娃娃在牌桌外下方（居中），信息框位于牌数上方 */
-.bt-seat[data-seat="1"] { left: 50%; bottom: calc(0% + 12px); top: auto; transform: translateX(-50%); }
+.bt-seat[data-seat="1"] { left: 50%; bottom: 1.5%; top: auto; right: auto; transform: translateX(-50%); }
 .bt-doll[data-seat="1"] {
   left: calc(50% - 25.5px);
   top: calc(100% + 14px);
@@ -3576,3 +3576,200 @@ body.chess-pre-game .game-layout { display: none; }
 .tl-topright .profile-btn { position: static; right: auto; top: auto; }
 #tech-notice-modal { z-index: 93 !important; }
 #tech-notice-modal .confirm-body { color: #FFD038; font-size: 2.0625vw; line-height: 1.8; text-align: center; }
+
+/* ---------- Upgrade ���� ---------- */
+.upgrade-page {
+  --bt-h: min(66vw, 72vh, 520px);
+  --bt-c: calc(var(--bt-h) * 0.1056);
+}
+.upgrade-page .board-wrap {
+  position: static;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: calc(var(--bt-h) * 4 / 3);
+  aspect-ratio: 4 / 3;
+  max-width: 100%;
+}
+.upgrade-page .upgrade-table { transform: scale(var(--up-scale, 1)); }
+.upgrade-page .bt-hand { --bt-hand-c: calc(100vh / 5 / 1.54385 * var(--up-hand-scale, 1)); }
+.up-trump {
+  position: absolute;
+  top: 14%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #FFD038;
+  font-size: calc(var(--bt-h) * 0.032);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 4;
+}
+.up-declare-bar {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #4BF82E;
+  font-size: calc(var(--bt-h) * 0.03);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 4;
+}
+/* 8 ����λλ�� */
+.bt-seat[data-seat="1"] { left: 50%; bottom: 1.5%; top: auto; right: auto; transform: translateX(-50%); }
+.bt-seat[data-seat="2"] { right: 5%; bottom: 3%; left: auto; top: auto; transform: none; }
+.bt-seat[data-seat="3"] { right: 4.5%; top: 50%; left: auto; transform: translateY(-50%); }
+.bt-seat[data-seat="4"] { right: 4.5%; top: 1.5%; left: auto; transform: none; }
+.bt-seat[data-seat="5"] { left: 50%; top: 1.5%; right: auto; transform: translateX(-50%); }
+.bt-seat[data-seat="6"] { left: 4.5%; top: 1.5%; right: auto; transform: none; }
+.bt-seat[data-seat="7"] { left: 4.5%; top: 50%; right: auto; transform: translateY(-50%); }
+.bt-seat[data-seat="8"] { left: 5%; bottom: 3%; right: auto; top: auto; transform: none; }
+/* 升级：娃娃按座位放在牌桌外侧（参照 battle/炸金花） */
+/* 升级：娃娃大小随牌桌缩放；阴影按自身比例偏移 */
+.upgrade-page .bt-doll {
+  width: calc(var(--bt-h) * 0.098);
+  height: calc(var(--bt-h) * 0.127);
+}
+.upgrade-page .bt-doll.bt-queen { height: calc(var(--bt-h) * 0.098); }
+.upgrade-page .bt-doll-shadow { transform: translate(5%, 5%); }
+.upgrade-page .bt-doll { pointer-events: auto; cursor: pointer; }
+.upgrade-page .bt-seat.turn .bt-opp-card { border-color: #4BF82E; }
+.upgrade-page .bt-doll[data-seat="1"] { left: calc(50% - var(--bt-h) * 0.049); top: calc(100% + var(--bt-h) * 0.0462); }
+.upgrade-page .bt-doll[data-seat="2"] { left: calc(100% + var(--bt-h) * 0.0846); top: calc(100% + var(--bt-h) * 0.0423); }
+.upgrade-page .bt-doll[data-seat="3"] { left: calc(100% + var(--bt-h) * 0.0846); top: calc(50% - var(--bt-h) * 0.0635); }
+.upgrade-page .bt-doll[data-seat="4"] { left: calc(100% + var(--bt-h) * 0.0846); top: calc(0% - var(--bt-h) * 0.1846); }
+.upgrade-page .bt-doll[data-seat="5"] { left: calc(50% - var(--bt-h) * 0.049); top: calc(0% - var(--bt-h) * 0.1846); }
+.upgrade-page .bt-doll[data-seat="6"] { left: calc(0% - var(--bt-h) * 0.1827); top: calc(0% - var(--bt-h) * 0.1846); }
+.upgrade-page .bt-doll[data-seat="7"] { left: calc(0% - var(--bt-h) * 0.1827); top: calc(50% - var(--bt-h) * 0.0635); }
+.upgrade-page .bt-doll[data-seat="8"] { left: calc(0% - var(--bt-h) * 0.1827); top: calc(100% + var(--bt-h) * 0.0423); }
+/* ���ֳ���չʾ */
+.up-play {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  gap: 2px;
+  z-index: 5;
+  pointer-events: none;
+}
+.up-play .fc-card {
+  width: calc(var(--bt-c) * 0.8);
+  height: calc(var(--bt-c) * 1.54385 * 0.8);
+}
+.upgrade-page .bt-player-list { gap: 8px; }
+.upgrade-page .player-card .bt-role-text { font-size: 12px; color: #FFD038; }
+.upgrade-page .player-card .bt-score { font-size: 12px; color: #95791F; }
+@media (max-width: 900px) {
+  .upgrade-page .game-layout { display: flex; flex-direction: column; padding: 10px; gap: 10px; }
+  .upgrade-page .panel.left, .upgrade-page .panel.right { width: 100%; }
+}
+
+/* Upgrade ����ģʽ */
+:where(html.pureblack) .upgrade-table { background: #000000; }
+:where(html.pureblack) .upgrade-page .panel { background: #000000; }
+
+/* Upgrade��������������ҳ����ʾ����ͬ�ߴ磻����ǰ���ضԾֻ��� */
+#up-create-modal .settings-page {
+  --sb: calc(55vw * 0.0155);
+  width: 55vw;
+  aspect-ratio: 16 / 10;
+}
+#up-create-modal .settings-body { font-size: 5.5cqh; }
+.upgrade-page.up-pre-game .game-layout > .panel.left,
+.upgrade-page.up-pre-game .game-layout > .panel.right,
+.upgrade-page.up-pre-game .board-area,
+.upgrade-page.up-pre-game #up-hand { display: none; }
+@media (max-width: 560px) {
+  #up-create-modal .settings-page {
+    width: 98vw;
+    --sb: calc(98vw * 0.0155);
+  }
+  #up-create-modal .settings-body { font-size: 16px; }
+}
+/* �������������м��о��У�����Ԥ�����޿ռ䣩 */
+.upgrade-page .board-area { display: flex; justify-content: center; }
+/* ���������� 8/12/16 �ţ���С��ʾ�����ڵ�������λ */
+.upgrade-page .bt-bottom .fc-card {
+  width: calc(var(--bt-c) * 0.45);
+  height: calc(var(--bt-c) * 1.54385 * 0.45);
+}
+.upgrade-page .board-area { align-items: flex-start; }
+/* ����������ʼ�մӶ�����ʼ�Ų�����������ʱ�������� */
+.upgrade-page .game-layout { align-content: start; }
+/* ������ҳ�治���������������ҳ�� */
+.upgrade-page, .upgrade-page .game-layout { overflow: hidden; }
+/* ������������������������루���������ϱ߽��������ϱ߽磩 */
+.upgrade-page .game-layout { align-items: start; }
+/* ������Ϸ�ȴ����棺��ҿ�Ƭ�߶� = �ɲ�������(wait-body)�߶ȵ� 1/4 */
+.zjh-wait-body { grid-auto-rows: calc(25% - var(--zgap) * 0.75); }
+/* �������Ҳ�������ֿ飨���������Ƭ + �ָ��� + ������Ϣ���ָ�����ʽ�ο� Turn Left�� */
+.upgrade-page .bt-player-list {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.upgrade-page .bt-player-list::-webkit-scrollbar { display: none; }
+.upgrade-page .up-team-block {
+  border: 2px solid #95791F;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-sizing: border-box;
+}
+.upgrade-page .tl-stats-divider {
+  border-top: 3px solid #95791F;
+  margin: 8px 0 6px;
+}
+.upgrade-page .tl-stats {
+  font-size: 15px;
+  color: #FFD038;
+}
+.upgrade-page .tl-stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+/* �����Ƭ���ƹ���ʱʡ�ԺŽضϣ���������߿� */
+.player-card .pname {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* ������ȥ�������Ϸ��ĵ�������������ʾ */
+.upgrade-page #up-bottom, .upgrade-page #up-trump { display: none !important; }
+/* ������������ƹ�����������С�ֺ� -> ʡ�Ժ� -> ��ͣ������ */
+.upgrade-page .pname .pname-in { display: inline-block; max-width: 100%; }
+.upgrade-page .pname.clipped .pname-in {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upgrade-page .pname.rolling .pname-in {
+  text-overflow: clip;
+  animation: up-name-roll var(--up-name-dur, 4s) ease-in-out infinite alternate;
+}
+@keyframes up-name-roll {
+  from { transform: translateX(0); }
+  to { transform: translateX(var(--up-name-shift, 0px)); }
+}
+/* �������ײ����Լ������޷��ڼ������Ϸ������ⱻ�����ڵ� */
+.upgrade-page .bt-doll[data-seat="1"] { left: calc(50% - var(--bt-h) * 0.049); top: calc(0% - var(--bt-h) * 0.1846); }
+/* ���������ɹ����������������ص� */
+.upgrade-page .panel { overflow-y: auto; scrollbar-width: none; }
+.upgrade-page .panel::-webkit-scrollbar { display: none; }
+/* ����������չʾ����λ����ܿ������� */
+
+/* 升级：出牌展示锚定在计数牌外侧，避免重叠 */
+.up-play { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.up-play[data-seat="1"] { left: 50%; right: auto; top: auto; bottom: calc(100% + 8px); transform: translateX(-50%); }
+.up-play[data-seat="2"] { left: auto; right: calc(100% + 8px); top: auto; bottom: calc(100% + 8px); transform: none; }
+.up-play[data-seat="3"] { left: auto; right: calc(100% + 8px); top: 50%; bottom: auto; transform: translateY(-50%); }
+.up-play[data-seat="4"] { left: auto; right: calc(100% + 8px); top: calc(100% + 8px); bottom: auto; transform: none; }
+.up-play[data-seat="5"] { left: 50%; right: auto; top: calc(100% + 8px); bottom: auto; transform: translateX(-50%); }
+.up-play[data-seat="6"] { left: calc(100% + 8px); right: auto; top: calc(100% + 8px); bottom: auto; transform: none; }
+.up-play[data-seat="7"] { left: calc(100% + 8px); right: auto; top: 50%; bottom: auto; transform: translateY(-50%); }
+.up-play[data-seat="8"] { left: calc(100% + 8px); right: auto; top: auto; bottom: calc(100% + 8px); transform: none; }
+/* 升级：去掉牌桌上方的亮主/反主提示 */
+.upgrade-page #up-declare-bar { display: none !important; }/* ���������ײ����루�ײ��̶����߶�����ʱ���ϼ��� */
+.upgrade-page .game-layout > .panel { align-self: end; }

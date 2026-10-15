@@ -1787,7 +1787,7 @@
     renderCondList($('export-cond-body'), exportConds, '限制条件', false);
     showModal($('export-modal'));
   }
-  function doExportSolutions() {
+  function buildExportText() {
     if (!solveResult || !solveResult.ok) return;
     var conds = [];
     for (var ci = 0; ci < exportConds.length; ci++) {
@@ -1803,6 +1803,8 @@
       if (c.maxstep !== null && c.maxstep !== undefined && c.maxstep < mx) mx = c.maxstep;
     });
     if (mn > mx) { toast('限制条件中的最小步数超过最大步数'); return; }
+    /* 有限定“最大步数”时做完整枚举（不丢解）；不限制步数时用最少步数剪枝快速求解 */
+    var hasMaxStep = conds.some(function (c) { return c.type === 0 && c.maxstep !== null && c.maxstep !== undefined; });
     var FACE_BIT = [2, 1, 8, 4];   /* SV_DIR 下标 -> 朝向位（右/上/左/下） */
     function condsPass(total, red, left, portal, faceDirIdx) {
       for (var i2 = 0; i2 < conds.length; i2++) {
@@ -1922,13 +1924,27 @@
           continue;   /* 胜利即结束该分支 */
         }
         var vkey = fx + ',' + fy + '|' + d + '|' + tasks2 + '|' + reds2 + (useLeft ? '|' + lefts2 : '') + (usePortal ? '|' + portals2 : '');
-        if (visitedPath[vkey] !== undefined) continue;
-        visitedPath[vkey] = total;
-        pathLines.push(line);
-        pathSteps.push(rec);
-        explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total);
-        pathLines.pop();
-        pathSteps.pop();
+        if (hasMaxStep) {
+          /* 完整枚举（路径内去重，回溯时清除）：保证限定范围内不丢解 */
+          if (visitedPath[vkey]) continue;
+          visitedPath[vkey] = true;
+          pathLines.push(line);
+          pathSteps.push(rec);
+          explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total);
+          pathLines.pop();
+          pathSteps.pop();
+          delete visitedPath[vkey];
+        } else {
+          /* 不限步数：记录最少步数，只有更短到达才继续扩展（快速给出较短解） */
+          var prevSteps = visitedPath[vkey];
+          if (prevSteps !== undefined && prevSteps <= total) continue;
+          visitedPath[vkey] = total;
+          pathLines.push(line);
+          pathSteps.push(rec);
+          explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total);
+          pathLines.pop();
+          pathSteps.pop();
+        }
       }
     }
     explore(sx, sy, -1, 0, 0, 0, 0, 0);
@@ -1949,9 +1965,14 @@
       out.push('通关时玩家朝向：' + sol.face);
       out.push('');
     });
+    return { text: out.join('\n'), count: solutions.length, solutions: solutions };
+  }
+  function doExportSolutions() {
+    var res = buildExportText();
+    if (!res) return;
     hideModal($('export-modal'));
-    downloadFile(sanitizeName(currentItem ? currentItem.name : 'level') + '.solutions.txt', out.join('\n'));
-    toast('已导出 ' + solutions.length + ' 个解法');
+    downloadFile(sanitizeName(currentItem ? currentItem.name : 'level') + '.solutions.txt', res.text);
+    toast('已导出 ' + res.count + ' 个解法');
   }
 
   $('btn-solve').addEventListener('click', verifySolvable);
@@ -2458,6 +2479,15 @@
       handleLaunchQuery();
     });
   });
+  /* 调试钩子（?debug=1）：供自动化测试导出与关卡数据 */
+  if (location.search.indexOf('debug=1') >= 0) {
+    window.__tlDebug = {
+      getSolve: function () { return solveResult; },
+      setExportConds: function (arr) { exportConds = arr || []; },
+      buildExportText: buildExportText,
+      data: function () { return { stage: stage, vertices: vertices, segs: segs, currentItem: currentItem }; }
+    };
+  }
 })();
 
 
