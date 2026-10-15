@@ -408,17 +408,43 @@
     { name: 'Multiportal', g: 'TURNLEFT_MULTIPORTAL_JSON' },
     { name: 'Giant', g: 'TURNLEFT_GIANT_JSON' }
   ];
+  var TL_HIDDEN_SET = { name: 'Hidden', g: 'TURNLEFT_HIDDEN_JSON' };
+  /* 某关卡集是否全部关卡已通关（无需最短步数/任务） */
+  function setAllLevelsDone(name, raw) {
+    if (!raw) return true;   /* 未加入的关卡集不参与判定 */
+    var arr = [];
+    try { arr = JSON.parse(raw) || []; } catch (e) { return false; }
+    arr = arr.filter(function (x) { return x && typeof x === 'object'; });
+    if (!arr.length) return true;
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem('tlCampaignSave:' + name) || 'null'); } catch (e) {}
+    for (var i = 0; i < arr.length; i++) {
+      if (!(saved && saved.levels && saved.levels[i] && saved.levels[i].done)) return false;
+    }
+    return true;
+  }
+  /* 闯关模式当前可见的关卡集（含满足条件的 Hidden） */
+  function campaignVisibleSets() {
+    var list = [{ name: 'TurnLeft', g: 'TURNLEFT_CAMPAIGN_JSON' }];
+    if (campaignMain61Done()) {
+      TL_SPECIAL_SETS.forEach(function (s) { list.push({ name: s.name, g: s.g }); });
+    }
+    if (window.TURNLEFT_HIDDEN_JSON && setAllLevelsDone('TurnLeft', window.TURNLEFT_CAMPAIGN_JSON)) {
+      var allDone = true;
+      for (var i = 0; i < TL_SPECIAL_SETS.length; i++) {
+        if (!setAllLevelsDone(TL_SPECIAL_SETS[i].name, window[TL_SPECIAL_SETS[i].g])) { allDone = false; break; }
+      }
+      if (allDone) list.push(TL_HIDDEN_SET);
+    }
+    return list;
+  }
   function openCampaignStats() {
     var body = document.getElementById('campaign-stats-body');
     body.innerHTML = '';
-    var sections = [
-      { name: 'Turn Left', json: window.TURNLEFT_CAMPAIGN_JSON, key: 'tlCampaignSave:TurnLeft' }
-    ];
-    if (campaignMain61Done()) {
-      TL_SPECIAL_SETS.forEach(function (s) {
-        sections.push({ name: s.name, json: window[s.g], key: 'tlCampaignSave:' + s.name });
-      });
-    }
+    var sections = [];
+    campaignVisibleSets().forEach(function (s) {
+      sections.push({ name: s.name === 'TurnLeft' ? 'Turn Left' : s.name, json: window[s.g], key: 'tlCampaignSave:' + s.name });
+    });
     sections.forEach(function (sec, si) {
       var arr = [];
       try { arr = JSON.parse(sec.json || 'null') || []; } catch (e) {}
@@ -522,11 +548,10 @@
         } catch (e) {}
       };
       addSet(window.TURNLEFT_CAMPAIGN_JSON || '', 'TurnLeft');
-      if (campaignMain61Done()) {
-        TL_SPECIAL_SETS.forEach(function (s) {
-          addSet(window[s.g] || '', s.name);
-        });
-      }
+      campaignVisibleSets().forEach(function (s) {
+        if (s.name === 'TurnLeft') return;
+        addSet(window[s.g] || '', s.name);
+      });
       if (!tlSets.length) renderTlSets('内置关卡数据缺失或损坏');
       else renderTlSets(null);
     }

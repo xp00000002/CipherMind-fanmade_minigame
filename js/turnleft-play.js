@@ -1807,7 +1807,8 @@
       Island: 'TURNLEFT_ISLAND_JSON',
       Symmetrical: 'TURNLEFT_SYMMETRICAL_JSON',
       'Multiportal': 'TURNLEFT_MULTIPORTAL_JSON',
-      Giant: 'TURNLEFT_GIANT_JSON'
+      Giant: 'TURNLEFT_GIANT_JSON',
+      Hidden: 'TURNLEFT_HIDDEN_JSON'
     };
     var pick = SPECIAL_G[setNameParam] ? window[SPECIAL_G[setNameParam]] : window.TURNLEFT_CAMPAIGN_JSON;
     try { setData = JSON.parse(pick || 'null'); } catch (e) {}
