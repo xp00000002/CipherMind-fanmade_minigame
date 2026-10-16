@@ -1981,6 +1981,7 @@
   /* ==================== 编辑任务集（任务 = 多个条件，条件之间为“与”关系） ==================== */
   var TASK_TYPES = ['限制步数', '限制通关时玩家朝向', '限制左转次数', '限制走过的红线数量', '限制传送门使用次数', '限制开局朝向'];
   var selTask = null;
+  var pendingNewTask = null;   /* 通过“添加任务”新建、尚未保存的任务下标（取消时移除） */
   var editingIndex = -1;      // 正在编辑的任务下标
   var workingTask = null;     // 正在编辑的任务（条件数组的深拷贝）
 
@@ -2384,16 +2385,32 @@
     if (!Array.isArray(arr)) return;
     editingIndex = arr.length;
     arr.push([newDefaultCond()]);
+    pendingNewTask = editingIndex;   /* 记录：取消时需移除该空任务 */
     selTask = { index: editingIndex };
     openTaskDetail();
   });
   $('task-view').addEventListener('click', function () {
     if (!selTask || selTask.index < 0) return;
     editingIndex = selTask.index;
+    pendingNewTask = null;   /* 编辑已有任务：取消不改动 */
     openTaskDetail();
   });
-  $('task-detail-cancel').addEventListener('click', function () { hideModal($('task-detail-modal')); });
-  $('task-detail-save').addEventListener('click', saveTaskDetail);
+  $('task-detail-cancel').addEventListener('click', function () {
+    if (pendingNewTask !== null) {
+      var arr = taskList();
+      if (Array.isArray(arr) && arr[pendingNewTask] !== undefined) {
+        arr.splice(pendingNewTask, 1);
+        selTask = null;
+        renderTaskList();
+      }
+      pendingNewTask = null;
+    }
+    hideModal($('task-detail-modal'));
+  });
+  $('task-detail-save').addEventListener('click', function () {
+    pendingNewTask = null;   /* 保存：保留该任务 */
+    saveTaskDetail();
+  });
 
   /* ---------- 启动 ---------- */
   updateSetScroll = wireListScroll($('set-lobby'), $('set-scrollbar'), $('set-scrollbar-thumb'));
