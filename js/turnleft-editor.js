@@ -1803,8 +1803,6 @@
       if (c.maxstep !== null && c.maxstep !== undefined && c.maxstep < mx) mx = c.maxstep;
     });
     if (mn > mx) { toast('限制条件中的最小步数超过最大步数'); return; }
-    /* 有限定“最大步数”时做完整枚举（不丢解）；不限制步数时用最少步数剪枝快速求解 */
-    var hasMaxStep = conds.some(function (c) { return c.type === 0 && c.maxstep !== null && c.maxstep !== undefined; });
     var FACE_BIT = [2, 1, 8, 4];   /* SV_DIR 下标 -> 朝向位（右/上/左/下） */
     function condsPass(total, red, left, portal, faceDirIdx) {
       for (var i2 = 0; i2 < conds.length; i2++) {
@@ -1823,6 +1821,7 @@
 
     /* 枚举 [mn, mx] 步内的所有解法 */
     var solutions = [];
+    var seenSig = {};   /* 去重：相同路径只导出一次 */
     var visitedPath = {};
     var pathLines = [];
     var pathSteps = [];
@@ -1872,8 +1871,12 @@
     function popcount(v) { var c = 0; while (v) { c += v & 1; v >>= 1; } return c; }
     var endKey = null;
     void endKey;
+    var nodesVisited = 0, searchTruncated = false;
+    var NODE_BUDGET = 20000000;   /* 搜索量上限，超出则截断（保证不卡死） */
     function explore(x, y, face, tasks, reds, lefts, portals, steps) {
       if (solutions.length >= SOLVE_CAP) return;
+      nodesVisited++;
+      if (nodesVisited > NODE_BUDGET) { searchTruncated = true; return; }
       if (steps >= mx) return;
       var tryDirs = face < 0 ? [0, 1, 2, 3] : [face, (face + 1) % 4];
       for (var ti = 0; ti < tryDirs.length; ti++) {
@@ -1912,39 +1915,32 @@
         if (portalMax !== null && portals2 > portalMax) continue;
         if (won) {
           if (total >= mn && total <= mx && condsPass(total, popcount(reds2), lefts2, portals2, d)) {
-            solutions.push({
-              lines: pathLines.slice(1).concat([line]),
-              len: total,
-              red: popcount(reds2),
-              left: lefts2,
-              portal: portals2,
-              face: D.zh
-            });
+            var solLines = pathLines.slice(1).concat([line]);
+            var sigKey = solLines.join('\n');
+            if (!seenSig[sigKey]) {
+              seenSig[sigKey] = true;
+              solutions.push({
+                lines: solLines,
+                len: total,
+                red: popcount(reds2),
+                left: lefts2,
+                portal: portals2,
+                face: D.zh
+              });
+            }
           }
           continue;   /* 胜利即结束该分支 */
         }
         var vkey = fx + ',' + fy + '|' + d + '|' + tasks2 + '|' + reds2 + (useLeft ? '|' + lefts2 : '') + (usePortal ? '|' + portals2 : '');
-        if (hasMaxStep) {
-          /* 完整枚举（路径内去重，回溯时清除）：保证限定范围内不丢解 */
-          if (visitedPath[vkey]) continue;
-          visitedPath[vkey] = true;
-          pathLines.push(line);
-          pathSteps.push(rec);
-          explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total);
-          pathLines.pop();
-          pathSteps.pop();
-          delete visitedPath[vkey];
-        } else {
-          /* 不限步数：记录最少步数，只有更短到达才继续扩展（快速给出较短解） */
-          var prevSteps = visitedPath[vkey];
-          if (prevSteps !== undefined && prevSteps <= total) continue;
-          visitedPath[vkey] = total;
-          pathLines.push(line);
-          pathSteps.push(rec);
-          explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total);
-          pathLines.pop();
-          pathSteps.pop();
-        }
+        /* 完整枚举（路径内去重，回溯时清除）：不丢解 */
+        if (visitedPath[vkey]) continue;
+        visitedPath[vkey] = true;
+        pathLines.push(line);
+        pathSteps.push(rec);
+        explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total);
+        pathLines.pop();
+        pathSteps.pop();
+        delete visitedPath[vkey];
       }
     }
     explore(sx, sy, -1, 0, 0, 0, 0, 0);
@@ -1955,6 +1951,7 @@
     out.push('最短步数：' + solveResult.dist);
     out.push('限制条件：' + (conds.length ? conds.map(condLabel).join('；') : '无'));
     out.push('解法数量：' + solutions.length);
+    if (searchTruncated) out.push('（搜索量过大，结果可能不完整）');
     out.push('');
     solutions.forEach(function (sol, i) {
       out.push('===== 解法 ' + (i + 1) + '（' + sol.len + ' 步） =====');
