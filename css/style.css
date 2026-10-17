@@ -3579,6 +3579,26 @@ body.chess-pre-game .game-layout { display: none; }
 }
 .disclaimer-scroll::-webkit-scrollbar { display: none; }
 .disclaimer-scroll p { margin: 0 0 0.8em; }
+/* 首次进入提示 */
+#welcome-modal .confirm-frame { overflow: hidden; }
+.welcome-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 12% 8% 4%;
+  color: #FFD038;
+  font-size: 2.0625vw;
+  line-height: 1.7;
+}
+.welcome-scroll::-webkit-scrollbar { display: none; }
+.welcome-scroll p { margin: 0 0 0.8em; }
+.welcome-link { color: #4BF82E; text-decoration: underline; cursor: pointer; }
+.welcome-link:hover { color: #FFD038; }
+@media (max-width: 560px) {
+  .welcome-scroll { font-size: clamp(13px, 3.75cqw, 24px); padding: 48px 8% 8px; }
+  #btn-welcome-agree { font-size: clamp(13px, 4vw, 18px); white-space: nowrap; }
+}
 /* �������Ͻǰ�ť�飨ˢ�� + ����/�༭ģʽ�� */
 .tl-topright {
   position: absolute;

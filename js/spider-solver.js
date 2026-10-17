@@ -53,7 +53,8 @@
     if (!destCards.length) return true;
     var srcCard = p.desk[orig][p.desk[orig].length - num];
     var destCard = destCards[destCards.length - 1];
-    return srcCard.suit === destCard.suit && srcCard.point + 1 === destCard.point;
+    /* 任意花色均可放在点数大 1 的牌下面（收牌仍需同花色） */
+    return srcCard.point + 1 === destCard.point;
   }
   function restore(p) {
     for (var i = 0; i < 10; i++) {

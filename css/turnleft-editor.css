@@ -4684,10 +4684,32 @@ h1, h2, h3, b, strong { font-weight: 400; }
   .tl-play-page .panel.right { grid-row: 3; flex-direction: column; }
   .tl-play-page .task-panel { max-height: 40vh; }
 }
+/* 平板：下方面板左半任务、右半统计 */
+@media (min-width: 561px) and (max-width: 900px) {
+  .tl-play-page .game-layout > .panel.right {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "title ."
+      "tasks stats";
+    gap: 8px 16px;
+    align-items: start;
+  }
+  /* 标题只在左半侧居中，不占用右半空间 */
+  .tl-play-page .panel.right .panel-title { grid-area: title; text-align: center; }
+  .tl-play-page .panel.right .task-panel { grid-area: tasks; width: auto; max-height: 40vh; }
+  .tl-play-page .panel.right .tl-stats-divider { display: none; }
+  .tl-play-page .panel.right .tl-stats { grid-area: stats; width: auto; }
+  /* 平板任务文字动态大小 */
+  .tl-play-page .panel.right .task-panel { font-size: clamp(12px, 2.2vw, 16px); }
+}
 @media (max-width: 560px) {
   .tl-play-page .game-layout { gap: 8px; padding: 8px; }
   .tl-play-page .panel { padding: 10px; }
   .tl-play-page .panel.left .controls .btn { flex: 1 1 45%; }
+  /* 手机任务文字动态大小 */
+  .tl-play-page .panel.right .task-panel { font-size: clamp(12px, 3.4vw, 15px); }
 }
 /* ƽ�壺������������ռ�����ȣ�board-wrap �ع��ĵ������� */
 @media (max-width: 900px) {

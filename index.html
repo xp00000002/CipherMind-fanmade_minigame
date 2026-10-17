@@ -256,6 +256,38 @@
     </div>
   </div>
 
+  <!-- 首次进入提示 -->
+  <div id="welcome-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">提示</div>
+        <div class="welcome-scroll">
+          <p>本小游戏集是以南京鸽游网络有限公司制作的多人解谜游戏《CipherMind》为基础创作的同人作品。本游戏未获得 Pigeon Games 的认可或背书，不应被视为其官方作品或官方作品的延续。</p>
+          <p>本小游戏集在您的设备中存储了部分数据，以便记录您的个性化设定。</p>
+          <p>更多有关信息请阅读<a href="javascript:void(0)" id="welcome-disclaimer-link" class="welcome-link">免责声明</a>。</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-welcome-agree" class="btn" disabled>我已阅读并同意(5s)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 移动端提示 -->
+  <div id="mobile-notice-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">提示</div>
+        <div class="confirm-body">
+          <p class="confirm-text">本小游戏集以桌面端视图为基准进行设计。虽然我们对移动端进行了适配，但我们仍更推荐您使用桌面端或将您的设备设为横屏游玩，以获得更佳的游戏效果。</p>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-mobile-notice-ok" class="btn">确认</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="turnleft-levels/TurnLeft.js"></script>
   <script src="turnleft-levels/Oneshot.js"></script>
   <script src="turnleft-levels/Endportal.js"></script>

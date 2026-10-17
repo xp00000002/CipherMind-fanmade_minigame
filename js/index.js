@@ -43,13 +43,13 @@
   /* ---------- 游戏切换（主界面下方 < 1/2 > 选择框） ---------- */
   var GAMES = [
     { title: 'Chess', img: 'texture/chessintro.png', page: 'game.html', game: 'chess' },
-    { title: 'Freecell', img: 'texture/freecellintro.png', page: 'freecell.html', game: 'freecell' },
-    { title: 'Klondike Solitaire', img: 'texture/klondikesolitaireintro.png', page: 'klondike.html', game: 'klondike' },
-    { title: 'Spider Solitaire', img: 'texture/spidersolitaireintro.png', page: 'spider.html', game: 'spider' },
     { title: 'Compare', img: 'texture/compareintro.png', page: 'zjh.html', game: 'zjh' },
     { title: 'Battle', img: 'texture/battleintro.png', page: 'battle.html', game: 'battle' },
     { title: 'Upgrade', img: 'texture/upgradeintro.png', page: 'upgrade.html', game: 'upgrade' },
-    { title: 'Turn Left', img: 'texture/turnleftintro.png', page: '', game: 'turnleft' }
+    { title: 'Turn Left', img: 'texture/turnleftintro.png', page: '', game: 'turnleft' },
+    { title: 'Freecell', img: 'texture/freecellintro.png', page: 'freecell.html', game: 'freecell' },
+    { title: 'Klondike Solitaire', img: 'texture/klondikesolitaireintro.png', page: 'klondike.html', game: 'klondike' },
+    { title: 'Spider Solitaire', img: 'texture/spidersolitaireintro.png', page: 'spider.html', game: 'spider' }
   ];
   var gameIdx = 0;
   try {
@@ -996,6 +996,56 @@
     document.getElementById('disclaimer-modal').classList.add('hidden');
   });
 
+  /* ---------- 首次进入提示 / 移动端提示 ---------- */
+  var welcomeTimer = null;
+  function isMobileView() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 900px)').matches);
+  }
+  function showWelcomeModal() {
+    var btn = document.getElementById('btn-welcome-agree');
+    var left = 5;
+    btn.disabled = true;
+    btn.textContent = '我已阅读并同意(' + left + 's)';
+    show(document.getElementById('welcome-modal'));
+    if (welcomeTimer) clearInterval(welcomeTimer);
+    welcomeTimer = setInterval(function () {
+      left--;
+      if (left <= 0) {
+        clearInterval(welcomeTimer);
+        welcomeTimer = null;
+        btn.disabled = false;
+        btn.textContent = '我已阅读并同意';
+      } else {
+        btn.textContent = '我已阅读并同意(' + left + 's)';
+      }
+    }, 1000);
+  }
+  function maybeShowMobileNotice() {
+    var shown = false;
+    try { shown = localStorage.getItem('cmchessMobileNotice') === '1'; } catch (e) {}
+    if (shown || !isMobileView()) return;
+    show(document.getElementById('mobile-notice-modal'));
+  }
+  function maybeShowWelcome() {
+    var agreed = false;
+    try { agreed = localStorage.getItem('cmchessWelcomeAgreed') === '1'; } catch (e) {}
+    if (!agreed) { showWelcomeModal(); return; }
+    maybeShowMobileNotice();
+  }
+  document.getElementById('welcome-disclaimer-link').addEventListener('click', function () {
+    show(document.getElementById('disclaimer-modal'));
+  });
+  document.getElementById('btn-welcome-agree').addEventListener('click', function () {
+    if (this.disabled) return;
+    try { localStorage.setItem('cmchessWelcomeAgreed', '1'); } catch (e) {}
+    hide(document.getElementById('welcome-modal'));
+    maybeShowMobileNotice();
+  });
+  document.getElementById('btn-mobile-notice-ok').addEventListener('click', function () {
+    try { localStorage.setItem('cmchessMobileNotice', '1'); } catch (e) {}
+    hide(document.getElementById('mobile-notice-modal'));
+  });
+
   /* 从制作器返回 / 深链：进入 Turn Left 工坊并保留上次目录 */
   var bootWs = false;
   var bootCampaign = false;
@@ -1036,4 +1086,7 @@
       });
     }
   }
+
+  /* 首次进入提示（在其它启动流程之后弹出，位于最上层） */
+  maybeShowWelcome();
 })();

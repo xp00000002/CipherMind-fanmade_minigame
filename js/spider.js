@@ -410,7 +410,8 @@
   function canMoveTo(c, run) {
     var top = cols[c][cols[c].length - 1];
     if (!top) return true;
-    return top.suit === run[0].suit && top.rank === run[0].rank + 1;
+    /* 任意花色均可放在点数大 1 的牌下面（收牌仍需同花色） */
+    return top.rank === run[0].rank + 1;
   }
   function collectComplete() {
     var anims = [];
@@ -718,7 +719,7 @@
     if (sel) {
       if (colIdx === sel.c) { clearSel(); return; }
       if (tryMoveSelToCol(colIdx)) return;
-      toast('无法放到这里：目标顶牌需比它大 1 点且同花色');
+      toast('无法放到这里：目标顶牌需比它大 1 点');
     }
   }
 
