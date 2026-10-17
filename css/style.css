@@ -1094,6 +1094,8 @@ body.bg-image .start-wrap { background: rgba(0, 0, 0, 0.25); }
 .settings-body .setting-row {
   margin: 0 calc(var(--sb) * 2 / 3);   /* 分割线之外的内容再内缩 2/3 边框宽 */
 }
+/* 统一设置页各行高度：滑块行/选择行/开关行等高，使行间距一致 */
+.settings-body > .setting-row { min-height: 1.5em; }
 .settings-body .setting-divider { margin: 0; }
 .settings-scrollbar {
   position: absolute;
@@ -2695,6 +2697,19 @@ body.chess-pre-game .game-layout { display: none; }
 .bt-hand .fc-card.sel {
   transform: translateY(calc(var(--bt-hand-c) * -0.24));   /* 选中抬高（图层保持自然顺序） */
 }
+/* 手牌两列（平板 >20 张 / 手机 >15 张）：上下纵向重叠 50%，水平重叠以上列为准 */
+.bt-hand.bt-hand-two {
+  flex-direction: column;
+  align-items: center;
+}
+.bt-hand-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.bt-hand.bt-hand-two .bt-hand-row + .bt-hand-row {
+  margin-top: calc(var(--bt-hand-c) * -0.5 * 1.54385);
+}
 /* 手牌牌框：没轮到自己时变暗，轮到自己时变亮（适配边框着色模式） */
 .bt-hand .fc-card { border-color: #95791F; }
 .bt-hand.bt-myturn .fc-card { border-color: #FFD038; }
@@ -2852,7 +2867,7 @@ body.chess-pre-game .game-layout { display: none; }
   gap: calc(6px * var(--cscale, 1));
   white-space: nowrap;
 }
-#bt-spec-name {
+#bt-spec-name, #up-spec-name {
   color: #FFD038;
   font-weight: 700;
   font-size: calc(12px * var(--cscale, 1));   /* 玩家名称随记牌器大小设置缩放 */
@@ -3642,6 +3657,11 @@ body.chess-pre-game .game-layout { display: none; }
 .upgrade-page .bt-doll[data-seat="6"] { left: calc(0% - var(--bt-h) * 0.1827); top: calc(0% - var(--bt-h) * 0.1846); }
 .upgrade-page .bt-doll[data-seat="7"] { left: calc(0% - var(--bt-h) * 0.1827); top: calc(50% - var(--bt-h) * 0.0635); }
 .upgrade-page .bt-doll[data-seat="8"] { left: calc(0% - var(--bt-h) * 0.1827); top: calc(100% + var(--bt-h) * 0.0423); }
+/* 出牌选项置于“牌桌下方”时：牌桌内部布局下边界 = 出牌选项条上边界（底部座位/计数牌上移，娃娃保持原位） */
+.upgrade-page .upgrade-table.up-opt-bottom { --up-opt-inset: calc(var(--bt-h) * 0.13); }
+.upgrade-page .bt-seat[data-seat="1"] { bottom: calc(1.5% + var(--up-opt-inset, 0px)); }
+.upgrade-page .bt-seat[data-seat="2"] { bottom: calc(3% + var(--up-opt-inset, 0px)); }
+.upgrade-page .bt-seat[data-seat="8"] { bottom: calc(3% + var(--up-opt-inset, 0px)); }
 /* ���ֳ���չʾ */
 .up-play {
   position: absolute;
@@ -3730,6 +3750,54 @@ body.chess-pre-game .game-layout { display: none; }
   justify-content: space-between;
   padding: 3px 0;
 }
+/* 左侧面板底部：本局实时统计（贴面板下沿） */
+.upgrade-page .up-self-stats {
+  margin-top: auto;
+  flex: 0 0 auto;
+}
+/* Upgrade 查看记录 */
+.upgrade-page .up-records-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFD038;
+}
+.upgrade-page #up-records-modal .setting-divider { border-top-width: 0.16em; }
+.upgrade-page .up-rec-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6em;
+  margin: 0 calc(var(--sb) * 2 / 3);
+}
+.upgrade-page .up-rec-name {
+  margin: 0 calc(var(--sb) * 2 / 3);
+  padding-left: 1.5em;
+  color: #95791F;
+}
+.upgrade-page .up-rec-detail-title {
+  margin: 0 calc(var(--sb) * 2 / 3);
+  color: #FFD038;
+  font-weight: 700;
+}
+.upgrade-page .up-rec-play {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6em;
+  margin: 0 calc(var(--sb) * 2 / 3);
+  padding-left: 1.5em;
+}
+.upgrade-page .up-rec-play-name { color: #FFD038; white-space: nowrap; }
+.upgrade-page .up-rec-delta { color: #4BF82E; }
+.upgrade-page .up-rec-cards { display: flex; gap: 0.15em; margin-left: auto; }
+.upgrade-page .up-rec-card {
+  --fc-c: 1.1em;
+  display: inline-block;
+  width: var(--fc-c);
+  height: calc(var(--fc-c) * 1.54385);
+  flex-shrink: 0;
+}
 /* �����Ƭ���ƹ���ʱʡ�ԺŽضϣ���������߿� */
 .player-card .pname {
   overflow: hidden;
@@ -3755,6 +3823,8 @@ body.chess-pre-game .game-layout { display: none; }
 }
 /* �������ײ����Լ������޷��ڼ������Ϸ������ⱻ�����ڵ� */
 .upgrade-page .bt-doll[data-seat="1"] { left: calc(50% - var(--bt-h) * 0.049); top: calc(0% - var(--bt-h) * 0.1846); }
+/* 观战者：1 号位娃娃显示在牌桌下方（底部居中） */
+body.upgrade-page.up-spec .bt-doll[data-seat="1"] { top: calc(100% + var(--bt-h) * 0.0462); }
 /* ���������ɹ����������������ص� */
 .upgrade-page .panel { overflow-y: auto; scrollbar-width: none; }
 .upgrade-page .panel::-webkit-scrollbar { display: none; }
@@ -3771,5 +3841,226 @@ body.chess-pre-game .game-layout { display: none; }
 .up-play[data-seat="7"] { left: calc(100% + 8px); right: auto; top: 50%; bottom: auto; transform: translateY(-50%); }
 .up-play[data-seat="8"] { left: calc(100% + 8px); right: auto; top: auto; bottom: calc(100% + 8px); transform: none; }
 /* 升级：去掉牌桌上方的亮主/反主提示 */
-.upgrade-page #up-declare-bar { display: none !important; }/* ���������ײ����루�ײ��̶����߶�����ʱ���ϼ��� */
+.upgrade-page #up-declare-bar { display: none !important; }/* ���������ײ����루�ײ��̶����߶�����ʱ���ϼ��� */
 .upgrade-page .game-layout > .panel { align-self: end; }
+/* ---------- Upgrade 记牌器（主牌/副牌 两行） ---------- */
+.up-counter {
+  position: fixed;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  width: max-content;
+  background: #000;
+  padding: calc((2px * var(--cscale, 1)) / 3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(6px * var(--cscale, 1));
+}
+.up-counter-frame {
+  display: flex;
+  flex-direction: column;
+  border: calc(2px * var(--cscale, 1)) solid #FFD038;
+  box-sizing: border-box;
+}
+.up-counter-title {
+  color: #FFD038;
+  font-size: calc(13px * var(--cscale, 1));
+  font-weight: 700;
+  text-align: center;
+  padding: calc(3px * var(--cscale, 1)) 0;
+  border-bottom: calc(2px * var(--cscale, 1)) solid #FFD038;
+}
+.up-counter-grid {
+  --img-h: calc(9.6px * var(--cscale, 1));
+  display: grid;
+  grid-template-columns: auto repeat(15, auto);
+  width: max-content;
+  gap: calc(2px * var(--cscale, 1));
+  background: #FFD038;
+}
+.up-cc {
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+.up-cc-head {
+  padding: calc(var(--img-h) * 0.4) calc(4px * var(--cscale, 1));
+}
+.up-cc-head img {
+  height: var(--img-h);
+  width: auto;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+.up-cc-label {
+  color: #FFD038;
+  font-size: calc(12px * var(--cscale, 1));
+  padding: calc(2px * var(--cscale, 1)) calc(4px * var(--cscale, 1));
+  white-space: nowrap;
+}
+.up-cc-count {
+  color: #FFD038;
+  font-size: calc(12px * var(--cscale, 1));
+  line-height: 1.15;
+  padding: calc(2px * var(--cscale, 1)) calc(4px * var(--cscale, 1));
+  min-width: 1.2em;
+  text-align: center;
+}
+.up-cc-count.out { color: #95791F; }
+
+/* ---------- Upgrade 平板/手机适配 ---------- */
+@media (max-width: 900px) {
+  .upgrade-page .panel.left, .upgrade-page .panel.right { display: none !important; }
+  .upgrade-page .game-layout {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 10px;
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+  .upgrade-page .top-panel,
+  .upgrade-page .bottom-panel {
+    display: block;
+    width: 100%;
+    zoom: 1;
+    box-sizing: border-box;
+    background: #000000D3;
+    border: 3px solid #FFD038;
+    padding: 10px;
+  }
+  .upgrade-page .top-panel { order: 1; flex: 0 0 auto; }
+  .upgrade-page .board-area { order: 2; width: 100%; flex: 0 0 auto; }
+  .upgrade-page .bottom-panel { order: 3; flex: 0 0 auto; }
+  /* 移动端面板内部滚动但隐藏滚动条 */
+  .upgrade-page .top-panel,
+  .upgrade-page .bottom-panel { scrollbar-width: none; }
+  .upgrade-page .top-panel::-webkit-scrollbar,
+  .upgrade-page .bottom-panel::-webkit-scrollbar { display: none; }
+  /* 手牌固定窗口底部（bt-hand-fixed 由 JS 控制） */
+  .upgrade-page #up-hand { max-width: 100%; }
+  /* 队伍卡片：默认一行一个（平板一行两个见下方） */
+  .upgrade-page #up-player-panel {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    width: 100%;
+  }
+  .upgrade-page .up-team-block { min-width: 0; }
+  .upgrade-page .player-card { min-width: 0; }
+  .upgrade-page .player-card .pinfo { min-width: 0; }
+  .upgrade-page.up-spec #up-hand { display: none; }
+  /* 顶部记牌器/看牌条不超出窗口宽度 */
+  .upgrade-page .up-counter { max-width: 98vw; overflow-x: auto; }
+}
+@media (min-width: 561px) and (max-width: 900px) {
+  /* 平板：队伍卡片一行两个 */
+  .upgrade-page .top-panel #up-player-panel { grid-template-columns: repeat(2, 1fr); }
+  .upgrade-page .top-panel .player-card { background: transparent; }
+  /* 下方面板：左半 提示框在上、按钮在下；右半 统计 */
+  .upgrade-page .bottom-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-items: start;
+  }
+  .upgrade-page .bottom-left,
+  .upgrade-page .bottom-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+  .upgrade-page .bottom-left .status-box { margin: 0; }
+  .upgrade-page .bottom-left .controls { order: 0; flex-direction: column; gap: 6px; }
+  .upgrade-page .bottom-left .controls .btn { width: 100%; }
+  .upgrade-page .bottom-right .up-self-stats { margin-top: 0; }
+  /* 平板去掉统计信息上方的分割线 */
+  .upgrade-page .bottom-right .tl-stats-divider { display: none; }
+}
+@media (max-width: 560px) {
+  /* 手机：上下面板最小高度 = 牌桌高度 60%；不足时页面滚动 */
+  .upgrade-page .game-layout {
+    overflow-x: hidden;
+    overflow-y: auto;
+    gap: 8px;
+    padding: 8px;
+  }
+  /* 上/下面板按比例分配剩余高度，内容各自内部滚动 */
+  .upgrade-page .top-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 2 1 0;
+    min-height: calc(var(--bt-h) * 0.6);
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .upgrade-page .bottom-panel {
+    display: block;
+    flex: 1 1 0;
+    min-height: calc(var(--bt-h) * 0.6);
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .upgrade-page .bottom-left,
+  .upgrade-page .bottom-right { display: none; }
+  .upgrade-page .top-panel .controls { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; }
+  .upgrade-page .top-panel .controls .btn {
+    flex: 1 1 auto;
+    width: auto;
+    min-height: calc(34px * var(--panel-scale, 1));
+    padding: 6px 8px;
+    font-size: calc(13px * var(--panel-scale, 1));
+  }
+  .upgrade-page .top-panel .status-box { margin: 0; padding: 6px; }
+  .upgrade-page .status { font-size: calc(13px * var(--panel-scale, 1)); }
+  .upgrade-page .up-self-stats { margin-top: 0; }
+  .upgrade-page .up-self-stats .tl-stats { font-size: calc(12px * var(--panel-scale, 1)); }
+  .upgrade-page .up-self-stats .tl-stat-row { padding: 0; }
+  .upgrade-page .up-self-stats .tl-stats-divider { margin: 4px 0; }
+  .upgrade-page .up-team-block { padding: 4px; gap: 4px; }
+  .upgrade-page .player-card { padding: 6px; gap: 6px; }
+  .upgrade-page .player-card .pname { font-size: calc(13px * var(--panel-scale, 1)); }
+  .upgrade-page .player-card .bt-role-text,
+  .upgrade-page .player-card .bt-score { font-size: calc(11px * var(--panel-scale, 1)); }
+  /* 手机：聊天弹窗改为玩家/预设/输入三段式 */
+  #up-chat-modal .confirm-page { width: 96vw; height: min(88vh, 640px); }
+  #up-chat-modal .confirm-frame { min-height: 0; }
+  #up-chat-modal .chat-body {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(48px, 0.7fr) minmax(120px, 2.8fr) minmax(48px, 0.7fr);
+    gap: 8px;
+    padding: 68px 10px 62px;
+    font-size: 16px;
+  }
+  #up-chat-modal .chat-players {
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 6px;
+  }
+  #up-chat-modal .chat-player {
+    width: auto;
+    min-width: 88px;
+    min-height: 44px;
+    text-align: center;
+  }
+  #up-chat-modal .chat-right { min-height: 0; display: contents; }
+  #up-chat-modal .chat-preset { grid-row: 2; min-height: 0; }
+  #up-chat-modal .chat-custom { grid-row: 3; min-height: 0; padding: 0; }
+  #up-chat-modal .chat-option { min-height: 44px; padding: 8px 10px; }
+  #up-chat-modal .chat-custom .join-input { min-height: 44px; box-sizing: border-box; }
+}
+/* 未开局：上下方面板同样隐藏 */
+.upgrade-page.up-pre-game .top-panel,
+.upgrade-page.up-pre-game .bottom-panel { display: none !important; }

@@ -1094,6 +1094,8 @@ body.bg-image .start-wrap { background: rgba(0, 0, 0, 0.25); }
 .settings-body .setting-row {
   margin: 0 calc(var(--sb) * 2 / 3);   /* 分割线之外的内容再内缩 2/3 边框宽 */
 }
+/* 统一设置页各行高度：滑块行/选择行/开关行等高，使行间距一致 */
+.settings-body > .setting-row { min-height: 1.5em; }
 .settings-body .setting-divider { margin: 0; }
 .settings-scrollbar {
   position: absolute;

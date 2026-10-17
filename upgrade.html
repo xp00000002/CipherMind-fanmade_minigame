@@ -4,9 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Upgrade · 升级</title>
-  <link rel="stylesheet" href="css/style.css?v=20260926">
+  <link rel="stylesheet" href="css/style.css?v=20260968">
 </head>
 <body class="upgrade-page">
+  <!-- 记牌器（页面上方固定条；Z / “显示记牌器(Z)”显示，X / “隐藏记牌器(X)”隐藏） -->
+  <div id="up-counter" class="up-counter hidden">
+    <div class="up-counter-frame">
+      <span class="up-counter-title">记牌器</span>
+      <div id="up-counter-grid" class="up-counter-grid"></div>
+    </div>
+    <!-- 观战者看牌条（与记牌器同框架） -->
+    <div class="bt-counter-frame hidden" id="up-spec-panel">
+      <div class="bt-spec-head">
+        <button type="button" class="switch-arrow" id="up-spec-prev" aria-label="上一个玩家"><img src="texture/lastchoice.png" alt="<"></button>
+        <div class="bt-spec-title">
+          <span id="up-spec-name" class="switch-label"></span>
+          <span id="up-spec-cnt" class="bt-spec-cnt"></span>
+        </div>
+        <button type="button" class="switch-arrow" id="up-spec-next" aria-label="下一个玩家"><img src="texture/nextchoice.png" alt=">"></button>
+      </div>
+      <div id="up-spec-cards" class="bt-spec-cards"></div>
+    </div>
+  </div>
+
   <div class="game-layout">
     <aside class="panel left">
       <div class="status-box">
@@ -15,11 +35,20 @@
       </div>
       <div class="controls" id="up-controls">
         <button id="btn-up-settings" class="btn">设置</button>
+        <button id="btn-up-records" class="btn">查看记录</button>
+        <button id="btn-up-cardcount" class="btn">显示记牌器(Z)</button>
+        <button id="btn-up-see" class="btn hidden">看牌</button>
+        <button id="btn-up-chat" class="btn hidden">发送消息</button>
+        <button id="btn-up-hand" class="btn hidden">隐藏手牌</button>
         <button id="btn-up-declare" class="btn hidden">亮主</button>
         <button id="btn-up-counter" class="btn hidden">反主</button>
-        <button id="btn-up-play" class="btn hidden">出牌(enter)</button>
-        <button id="btn-up-discard" class="btn hidden">确认弃牌</button>
+        <button id="btn-up-play" class="btn hidden">出牌(0)</button>
+        <button id="btn-up-discard" class="btn hidden">弃牌(0/0)</button>
         <button id="btn-up-home" class="btn hidden">返回主界面</button>
+      </div>
+      <div class="up-self-stats">
+        <div class="tl-stats-divider"></div>
+        <div class="tl-stats" id="up-stats"></div>
       </div>
     </aside>
 
@@ -31,6 +60,7 @@
           <div id="up-declare-bar" class="up-declare-bar hidden"></div>
           <div id="up-bottom" class="bt-bottom"></div>
           <div id="up-center" class="bt-center"></div>
+          <div id="up-opt-bar" class="bt-opt-bar hidden"></div>
           <div id="up-seat-1" class="bt-seat" data-seat="1"></div>
           <div id="up-seat-2" class="bt-seat" data-seat="2"></div>
           <div id="up-seat-3" class="bt-seat" data-seat="3"></div>
@@ -61,7 +91,10 @@
     <div id="up-hand" class="bt-hand"></div>
 
     <div class="top-panel"></div>
-    <div class="bottom-panel"></div>
+    <div class="bottom-panel">
+      <div class="bottom-left" id="up-bottom-left"></div>
+      <div class="bottom-right" id="up-bottom-right"></div>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -80,6 +113,22 @@
                 <span id="up-count-label" class="switch-label">4 人</span>
                 <button type="button" class="switch-arrow" id="up-count-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
               </div>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">启用记牌器</span>
+              <button type="button" class="toggle" id="up-opt-counter"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">允许观战</span>
+              <button type="button" class="toggle" id="up-opt-allow-spec"><img src="texture/toggleon.png" alt="on"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">禁用发送消息</span>
+              <button type="button" class="toggle" id="up-opt-nochat"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">允许私聊</span>
+              <button type="button" class="toggle" id="up-opt-private"><img src="texture/toggleoff.png" alt="off"></button>
             </div>
           </div>
         </div>
@@ -151,6 +200,27 @@
               <span id="up-panel-scale-label" class="setting-value">100%</span>
               <input id="up-panel-scale" type="range" min="50" max="150" step="5" value="100">
             </div>
+            <div class="setting-row slider-row">
+              <span class="setting-label">记牌器大小</span>
+              <span id="up-counter-scale-label" class="setting-value">100%</span>
+              <input id="up-counter-scale" type="range" min="50" max="150" step="5" value="100">
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">出牌选项位置</span>
+              <div class="sp-difficulty-switch" id="up-actionpos-select">
+                <button type="button" class="switch-arrow" id="up-actionpos-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="<"></button>
+                <span id="up-actionpos-label" class="switch-label">牌桌下方</span>
+                <button type="button" class="switch-arrow" id="up-actionpos-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">手牌排序</span>
+              <div class="sp-difficulty-switch" id="up-handsort-select">
+                <button type="button" class="switch-arrow" id="up-handsort-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="<"></button>
+                <span id="up-handsort-label" class="switch-label">按牌型由高到低</span>
+                <button type="button" class="switch-arrow" id="up-handsort-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
+              </div>
+            </div>
             <div class="setting-row toggle-row">
               <span class="setting-label">牌面透明</span>
               <button type="button" class="toggle" id="up-opt-transparent"><img src="texture/toggleoff.png" alt="off"></button>
@@ -164,9 +234,55 @@
               <button type="button" class="toggle" id="up-opt-twocolor"><img src="texture/toggleoff.png" alt="off"></button>
             </div>
           </div>
+          <div class="settings-scrollbar" id="up-settings-scrollbar">
+            <div class="settings-scrollbar-thumb" id="up-settings-scrollbar-thumb"></div>
+          </div>
         </div>
         <div class="settings-foot">
           <button id="btn-up-settings-close" class="btn">返回</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 发送消息 -->
+  <div id="up-chat-modal" class="modal hidden">
+    <div class="confirm-page">
+      <div class="confirm-frame">
+        <div class="confirm-title">发送消息</div>
+        <div class="chat-body">
+          <div class="chat-players" id="up-chat-players"></div>
+          <div class="chat-right">
+            <div class="chat-preset">
+              <div id="up-chat-op-1" class="chat-options"></div>
+              <div id="up-chat-op-2" class="chat-options"></div>
+              <div id="up-chat-op-3" class="chat-options"></div>
+            </div>
+            <div class="chat-custom">
+              <input id="up-chat-input" class="join-input" type="text" placeholder="自定义消息（1-60字，中文算2字）" spellcheck="false" autocomplete="off" maxlength="120">
+            </div>
+          </div>
+        </div>
+        <div class="confirm-foot">
+          <button id="btn-up-chat-cancel" class="btn">取消</button>
+          <button id="btn-up-chat-send" class="btn">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查看记录 -->
+  <div id="up-records-modal" class="modal hidden">
+    <div class="settings-page">
+      <div class="settings-frame">
+        <div class="settings-scroll">
+          <div class="settings-body" id="up-records-body"></div>
+          <div class="settings-scrollbar" id="up-records-scrollbar">
+            <div class="settings-scrollbar-thumb" id="up-records-scrollbar-thumb"></div>
+          </div>
+        </div>
+        <div class="settings-foot">
+          <button id="btn-up-records-close" class="btn">返回</button>
         </div>
       </div>
     </div>
@@ -182,6 +298,7 @@
         </div>
         <div class="confirm-foot">
           <button id="btn-up-next-round" class="btn">开始下一局</button>
+          <button id="btn-up-result-records" class="btn">查看记录</button>
           <button id="btn-up-result-home" class="btn">返回主界面</button>
         </div>
       </div>
@@ -207,6 +324,6 @@
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="js/profile.js"></script>
   <script src="js/modal-stack.js"></script>
-  <script src="js/upgrade.js?v=20260926"></script>
+  <script src="js/upgrade.js?v=20260968"></script>
 </body>
 </html>

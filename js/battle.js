@@ -1541,9 +1541,10 @@
   }
   /* 手牌宽度解析：相邻牌最多重叠 70% 牌宽（最少显示 30%），
      若 70% 重叠仍放不下整行则缩小牌面宽度 */
-  function resolveHandCw(target) {
+  function resolveHandCw(target, count) {
     var n = 0;
-    if (game && game.hands && mySelfId()) n = (game.hands[mySelfId()] || []).length;
+    if (typeof count === 'number') n = count;
+    else if (game && game.hands && mySelfId()) n = (game.hands[mySelfId()] || []).length;
     if (n <= 1) return target;
     var avail = window.innerWidth - 16;
     var need = target + (n - 1) * target * 0.3;   /* 70% 重叠时的整行宽 */
@@ -1595,28 +1596,51 @@
     if (btHandHidden) return;   /* 已用手势/按钮隐藏 */
     handEl.classList.remove('hidden');
     var cards = game.hands[mySelfId()] || [];
-    if (!cards.length) return;
-    var cw = resolveHandCw(handCardWidth());
+    if (!cards.length) { handEl.classList.remove('bt-hand-two'); return; }
     var n = cards.length;
+    /* 平板 >20 张 / 手机 >15 张：分上下两列 */
+    var tablet = !!window.matchMedia && window.matchMedia('(min-width: 561px) and (max-width: 900px)').matches;
+    var mobile = !!window.matchMedia && window.matchMedia('(max-width: 560px)').matches;
+    var limit = tablet ? 20 : (mobile ? 15 : 0);
+    var two = limit > 0 && n > limit;
+    var topCount = n;
+    if (two) {
+      if (n <= 2 * limit) topCount = limit;
+      else topCount = n - Math.floor(n / 2);
+    }
+    var cw = resolveHandCw(handCardWidth(), two ? topCount : n);
     /* 相邻牌默认重叠 50%（最少显示 30%＝重叠上限 70%）；整行放不下时只允许缩牌，不继续加大重叠 */
     var avail = window.innerWidth - 16;
     var step = cw * 0.5;
-    if (n > 1) {
+    var countForStep = two ? topCount : n;
+    if (countForStep > 1) {
       var minStep = cw * 0.3;
-      var fit = (avail - cw) / (n - 1);
+      var fit = (avail - cw) / (countForStep - 1);
       if (fit < minStep) fit = minStep;
       if (step > fit) step = fit;
     }
-    cards.forEach(function (c, i) {
-      var el = cardEl(c, true);
-      el.dataset.idx = i;
-      if (sel[i]) el.classList.add('sel');
-      if (i > 0) el.style.marginLeft = (-(cw - step)) + 'px';
-      handEl.appendChild(el);
-    });
+    handEl.classList.toggle('bt-hand-two', two);
+    function buildRow(list, startIdx) {
+      var row = document.createElement('div');
+      row.className = 'bt-hand-row';
+      list.forEach(function (c, i) {
+        var el = cardEl(c, true);
+        el.dataset.idx = startIdx + i;
+        if (sel[startIdx + i]) el.classList.add('sel');
+        if (i > 0) el.style.marginLeft = (-(cw - step)) + 'px';
+        row.appendChild(el);
+      });
+      return row;
+    }
+    if (two) {
+      handEl.appendChild(buildRow(cards.slice(0, topCount), 0));
+      handEl.appendChild(buildRow(cards.slice(topCount), topCount));
+    } else {
+      handEl.appendChild(buildRow(cards, 0));
+    }
   }
   function markSel(idx, on) {
-    var el = handEl.children[idx];
+    var el = handEl.querySelector('[data-idx="' + idx + '"]');
     if (el) el.classList.toggle('sel', on);
   }
   function renderPanel() {

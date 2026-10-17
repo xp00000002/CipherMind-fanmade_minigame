@@ -48,7 +48,7 @@
     { title: 'Spider Solitaire', img: 'texture/spidersolitaireintro.png', page: 'spider.html', game: 'spider' },
     { title: 'Compare', img: 'texture/compareintro.png', page: 'zjh.html', game: 'zjh' },
     { title: 'Battle', img: 'texture/battleintro.png', page: 'battle.html', game: 'battle' },
-    { title: 'Upgrade', img: 'texture/battleintro.png', page: 'upgrade.html', game: 'upgrade' },
+    { title: 'Upgrade', img: 'texture/upgradeintro.png', page: 'upgrade.html', game: 'upgrade' },
     { title: 'Turn Left', img: 'texture/turnleftintro.png', page: '', game: 'turnleft' }
   ];
   var gameIdx = 0;
@@ -123,7 +123,7 @@
           return;
         }
         if (room.game === 'upgrade') {
-          location.href = 'upgrade.html?mode=join&id=' + encodeURIComponent(room.id) + (room.gameStarted ? '&started=1' : '');
+          location.href = 'upgrade.html?mode=join&id=' + encodeURIComponent(room.id) + (room.gameStarted ? '&started=1&spec=1' : '');
           return;
         }
         location.href = GAMES[gameIdx].page + '?mode=join&id=' + encodeURIComponent(room.id) + '&spec=1' + (room.gameStarted ? '&started=1' : '');
