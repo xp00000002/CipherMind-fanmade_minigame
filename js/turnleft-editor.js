@@ -2366,6 +2366,8 @@
       localStorage.setItem('tlTestSetName', (wsCtx && wsCtx.fileName) || 'Test');
       localStorage.setItem('tlTestIndex', String(idx));
       localStorage.setItem('tlTestDirty', wsHasChanges() ? '1' : '0');
+      /* “已求解”标记仅运行期存在、不写入 JSON：单独保存，测试返回后恢复 */
+      localStorage.setItem('tlTestSolved', JSON.stringify(levelSet.map(function (it) { return !!(it && it._solved); })));
     } catch (e) {}
     bypassUnload = true;   /* 主动跳转不触发离开提示 */
     location.href = 'turnleft-play.html?mode=workshop&test=1';
@@ -2427,22 +2429,34 @@
     }
     if (q.indexOf('action=test-back') >= 0) {
       /* 从“测试关卡”返回：恢复测试前的关卡集与当前关卡，不清除未保存状态 */
-      var traw = '', tnm = '', tidx = 0, tdir = '0';
+      var traw = '', tnm = '', tidx = 0, tdir = '0', tsolved = '[]';
       try {
         traw = localStorage.getItem('tlTestSetRaw') || '';
         tnm = localStorage.getItem('tlTestSetName') || '';
         tidx = parseInt(localStorage.getItem('tlTestIndex'), 10);
         tdir = localStorage.getItem('tlTestDirty') || '0';
+        tsolved = localStorage.getItem('tlTestSolved') || '[]';
         localStorage.removeItem('tlTestSetRaw');
         localStorage.removeItem('tlTestSetName');
         localStorage.removeItem('tlTestIndex');
         localStorage.removeItem('tlTestDirty');
+        localStorage.removeItem('tlTestSolved');
       } catch (e) {}
       try {
         var tdata = JSON.parse(traw);
         wsCtx = { fileName: tnm || sanitizeName('Levels') };
         var tok = importSet(Array.isArray(tdata) ? tdata : [tdata], true);
         if (tok) {
+          /* 恢复测试前的“已求解”标记（测试本身不改变关卡内容） */
+          try {
+            var tSolved = JSON.parse(tsolved);
+            if (Array.isArray(tSolved)) {
+              levelSet.forEach(function (it, i) {
+                ensureSolvedFlag(it);
+                if (tSolved[i]) it._solved = true;
+              });
+            }
+          } catch (e3) {}
           var ti = isNaN(tidx) ? 0 : tidx;
           if (ti < 0 || ti >= levelSet.length) ti = 0;
           switchToIndex(ti);
@@ -2499,6 +2513,11 @@
       getSolve: function () { return solveResult; },
       setExportConds: function (arr) { exportConds = arr || []; },
       buildExportText: buildExportText,
+      levelSet: function () { return levelSet; },
+      selectLevel: function (i) { switchToIndex(i); },
+      setSolved: function (i, v) {
+        if (levelSet && levelSet[i]) { ensureSolvedFlag(levelSet[i]); levelSet[i]._solved = !!v; }
+      },
       data: function () { return { stage: stage, vertices: vertices, segs: segs, currentItem: currentItem }; }
     };
   }
