@@ -888,7 +888,9 @@
   $('btn-bt-create-back').addEventListener('click', function () {
     settings = JSON.parse(JSON.stringify(settingsBackup));
     hideModal($('bt-create-modal'));
-    showWait();
+    unregisterOpenRoom(myId);
+    try { peer.destroy(); } catch (e) {}
+    location.href = 'index.html';   /* 返回主界面 */
   });
   $('btn-bt-create').addEventListener('click', function () {
     hideModal($('bt-create-modal'));

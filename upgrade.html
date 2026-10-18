@@ -114,6 +114,22 @@
                 <button type="button" class="switch-arrow" id="up-count-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
               </div>
             </div>
+            <div class="setting-row">
+              <span class="setting-label">初始级牌</span>
+              <div class="sp-difficulty-switch" id="up-initlevel-select">
+                <button type="button" class="switch-arrow" id="up-initlevel-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="<"></button>
+                <span id="up-initlevel-label" class="switch-label">2</span>
+                <button type="button" class="switch-arrow" id="up-initlevel-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
+              </div>
+            </div>
+            <div class="setting-row">
+              <span class="setting-label">初始主牌花色</span>
+              <div class="sp-difficulty-switch" id="up-trumpmode-select">
+                <button type="button" class="switch-arrow" id="up-trumpmode-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="<"></button>
+                <span id="up-trumpmode-label" class="switch-label">开局指定</span>
+                <button type="button" class="switch-arrow" id="up-trumpmode-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
+              </div>
+            </div>
             <div class="setting-row toggle-row">
               <span class="setting-label">启用记牌器</span>
               <button type="button" class="toggle" id="up-opt-counter"><img src="texture/toggleoff.png" alt="off"></button>
@@ -297,7 +313,6 @@
           <div id="up-result-text" class="confirm-text"></div>
         </div>
         <div class="confirm-foot">
-          <button id="btn-up-next-round" class="btn">开始下一局</button>
           <button id="btn-up-result-records" class="btn">查看记录</button>
           <button id="btn-up-result-home" class="btn">返回主界面</button>
         </div>
@@ -324,6 +339,6 @@
   <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
   <script src="js/profile.js"></script>
   <script src="js/modal-stack.js"></script>
-  <script src="js/upgrade.js?v=20260968"></script>
+  <script src="js/upgrade.js?v=20260978"></script>
 </body>
 </html>

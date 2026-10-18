@@ -411,7 +411,8 @@
   $('btn-zjh-create-back').addEventListener('click', function () {
     settings = JSON.parse(JSON.stringify(settingsBackup));
     hideModal($('zjh-create-modal'));
-    showWait();
+    try { peer.destroy(); } catch (e) {}
+    location.href = 'index.html';   /* 返回主界面 */
   });
   $('btn-zjh-create').addEventListener('click', function () {
     hideModal($('zjh-create-modal'));

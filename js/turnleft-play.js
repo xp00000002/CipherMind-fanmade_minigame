@@ -248,9 +248,30 @@
     lb.classList.remove('hidden');
     lb.textContent = lvl.name || ('关卡 ' + (curIdx + 1));
     var w = boardWrap.getBoundingClientRect().width;
-    var fs = Math.max(10, Math.round(w / 13));
-    lb.style.fontSize = fs + 'px';
+    var baseFs = Math.max(10, Math.round(w / 13));
+    var minFs = Math.max(1, baseFs * 0.5);
+    var maxW = w * 0.9;   /* 文字两侧各留游玩区域宽度的 5% */
     lb.style.top = Math.max(2, Math.round(w * 0.015)) + 'px';
+    lb.style.whiteSpace = 'nowrap';
+    lb.style.width = '';
+    lb.style.textAlign = '';
+    var fs = baseFs;
+    lb.style.fontSize = fs + 'px';
+    while (fs > minFs && lb.scrollWidth > maxW) {
+      fs = Math.max(minFs, fs - 1);
+      lb.style.fontSize = fs + 'px';
+    }
+    if (lb.scrollWidth <= maxW) return;
+    /* 字号缩到下限仍放不下：换行显示 */
+    lb.style.whiteSpace = 'normal';
+    lb.style.textAlign = 'center';
+    lb.style.width = maxW + 'px';
+    if (lb.scrollWidth > maxW + 0.5) {
+      /* 换行后仍有超长不可断内容：保持字号并允许超出游玩区域 */
+      lb.style.width = '';
+      lb.style.whiteSpace = 'nowrap';
+      lb.style.textAlign = '';
+    }
   }
   function playableMaxIdx() {
     return playUnordered ? levels.length - 1 : unlockedIdx;

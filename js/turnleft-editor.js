@@ -31,7 +31,8 @@
     p1: 'turnleft-texture/portal1.png',
     p2: 'turnleft-texture/portal2.png',
     p3: 'turnleft-texture/portal3.png',
-    p4: 'turnleft-texture/portal4.png'
+    p4: 'turnleft-texture/portal4.png',
+    del: 'turnleft-texture/darkdeleteline.png'
   };
   /* 线工具定义（col: w=白/普通, r=red 变体；shape: n 普通 / a 箭头 / t 任务线 / ta 任务箭头） */
   var LINE_TOOLS = [
@@ -60,8 +61,8 @@
   var images = {};           // TEX key -> Image
   var imageReady = false;
   /* 各贴图原始像素尺寸（加载后以实际为准；48x7 系贴图宽度同为 48） */
-  var NATW = { n: 48, a: 48, t: 48, ta: 48, rn: 48, ra: 48, rt: 48, rta: 48, lineDark: 48, dotDark: 3, dotConnect: 3, dotRed: 3, start: 7, end: 7, startEnd: 7, redstart: 7, redend: 7, redstartEnd: 7, p1: 11, p2: 11, p3: 11, p4: 11, redp1: 11, redp2: 11, redp3: 11, redp4: 11 };
-  var NATH = { n: 3, a: 7, t: 3, ta: 7, rn: 3, ra: 7, rt: 3, rta: 7, lineDark: 3, dotDark: 3, dotConnect: 3, dotRed: 3, start: 7, end: 7, startEnd: 7, redstart: 7, redend: 7, redstartEnd: 7, p1: 11, p2: 11, p3: 11, p4: 11, redp1: 11, redp2: 11, redp3: 11, redp4: 11 };
+  var NATW = { n: 48, a: 48, t: 48, ta: 48, rn: 48, ra: 48, rt: 48, rta: 48, lineDark: 48, del: 48, dotDark: 3, dotConnect: 3, dotRed: 3, start: 7, end: 7, startEnd: 7, redstart: 7, redend: 7, redstartEnd: 7, p1: 11, p2: 11, p3: 11, p4: 11, redp1: 11, redp2: 11, redp3: 11, redp4: 11 };
+  var NATH = { n: 3, a: 7, t: 3, ta: 7, rn: 3, ra: 7, rt: 3, rta: 7, lineDark: 3, del: 7, dotDark: 3, dotConnect: 3, dotRed: 3, start: 7, end: 7, startEnd: 7, redstart: 7, redend: 7, redstartEnd: 7, p1: 11, p2: 11, p3: 11, p4: 11, redp1: 11, redp2: 11, redp3: 11, redp4: 11 };
   function natW(key) { return images[key] && images[key].naturalWidth ? images[key].naturalWidth : (NATW[key] || 48); }
   function natH(key) { return images[key] && images[key].naturalHeight ? images[key].naturalHeight : (NATH[key] || 3); }
 
@@ -239,9 +240,30 @@
     if (!show) { lb.textContent = ''; return; }
     lb.textContent = currentItem.name || '';
     var w = boardWrap ? boardWrap.getBoundingClientRect().width : benchSize();
-    var fs = Math.max(10, Math.round(w / 13));
-    lb.style.fontSize = fs + 'px';
+    var baseFs = Math.max(10, Math.round(w / 13));
+    var minFs = Math.max(1, baseFs * 0.5);
+    var maxW = w * 0.9;   /* 文字两侧各留游玩区域宽度的 5% */
     lb.style.top = Math.max(2, Math.round(w * 0.015)) + 'px';
+    lb.style.whiteSpace = 'nowrap';
+    lb.style.width = '';
+    lb.style.textAlign = '';
+    var fs = baseFs;
+    lb.style.fontSize = fs + 'px';
+    while (fs > minFs && lb.scrollWidth > maxW) {
+      fs = Math.max(minFs, fs - 1);
+      lb.style.fontSize = fs + 'px';
+    }
+    if (lb.scrollWidth <= maxW) return;
+    /* 字号缩到下限仍放不下：换行显示 */
+    lb.style.whiteSpace = 'normal';
+    lb.style.textAlign = 'center';
+    lb.style.width = maxW + 'px';
+    if (lb.scrollWidth > maxW + 0.5) {
+      /* 换行后仍有超长不可断内容：保持字号并允许超出游玩区域 */
+      lb.style.width = '';
+      lb.style.whiteSpace = 'nowrap';
+      lb.style.textAlign = '';
+    }
   }
   function setToggleImg2(id, on) {
     var b = $(id);
@@ -381,6 +403,8 @@
       var key = (t.col === 'r' ? 'r' : '') + t.id.replace(/^r/, '');
       bar.appendChild(mkBtn('tl-line', key, 0.8, 'line', t.id));
     });
+    /* 删除工具：放在所有线工具下面（左键/触屏点击已有线/点即可删除） */
+    bar.appendChild(mkBtn('tl-line', 'del', 0.8, 'delete', 'del'));
     /* 点工具：一行三个，方形按钮 */
     var row = document.createElement('div');
     row.className = 'tl-point-row';
@@ -618,6 +642,11 @@
   function handleGridDown(ev) {
     if (!stage) return;
     var p = gridPointFromEvent(ev);
+    /* 删除工具：左键/触屏点击已有线或点即可删除 */
+    if (toolKind === 'delete') {
+      deleteAtPoint(p);
+      return;
+    }
     if (ev.button === 2) {
       /* 右键删除 */
       if (toolKind === 'line') {
@@ -666,6 +695,36 @@
       var vt2 = nearestVertex(p);
       if (vt2) withHistory(function () { placePoint(vt2.x, vt2.y); });
     }
+  }
+
+  /* 删除工具：优先删除点击处的特殊点，否则删除最近的线 */
+  function deleteAtPoint(p) {
+    if (!stage) return;
+    var vt = nearestVertex(p);
+    var vk = vt ? vertexKey(vt.x, vt.y) : null;
+    var v = vk ? vertices[vk] : null;
+    var hasPoint = !!(v && (v.start || v.end || v.portal));
+    if (hasPoint) {
+      withHistory(function () {
+        if (v.start) { delete v.start; startCount = Math.max(0, startCount - 1); }
+        if (v.end) { delete v.end; endCount = Math.max(0, endCount - 1); }
+        if (v.portal) { portalCount[v.portal] = Math.max(0, portalCount[v.portal] - 1); delete v.portal; }
+        if (!Object.keys(v).length) delete vertices[vk];
+        renderGrid();
+        renderToolBar();
+      });
+      return;
+    }
+    var seg = nearestSegment(p);
+    if (!seg) return;
+    var k = segKey(seg.dir, seg.x, seg.y);
+    if (!segs[k]) return;
+    withHistory(function () {
+      delete segs[k];
+      sweepOrphanPoints();
+      renderGrid();
+      renderToolBar();
+    });
   }
 
   function placeLine(dir, x, y) {
@@ -1048,6 +1107,7 @@
   function beginRename(it, nameEl) {
     var inp = document.createElement('input');
     inp.className = 'set-name-input';
+    inp.maxLength = 128;   /* 关卡名称最多 128 个字符 */
     inp.value = it.name || '';
     inp.addEventListener('keydown', function (e) {
       e.stopPropagation();
@@ -1060,7 +1120,7 @@
     inp.focus();
     inp.select();
     inp.addEventListener('blur', function () {
-      var v = inp.value.trim();
+      var v = inp.value.trim().slice(0, 128);
       var dup = v && (levelSet || []).some(function (o) { return o !== it && o.name === v; });
       if (dup) { toast('关卡名称已存在，不能重名'); }
       else if (v) { it.name = v; wsMark(); }
@@ -1101,6 +1161,7 @@
     var w = parseInt($('new-w').value, 10);
     var h = parseInt($('new-h').value, 10);
     if (isNaN(w) || isNaN(h) || w < 0 || h < 0) { toast('宽和高需为不小于 0 的整数'); return; }
+    if (w > 32 || h > 32) { toast('宽和高不能超过 32'); return; }
     if (w === 0 && h === 0) { toast('宽和高不能同时为 0'); return; }
     if (!levelSet) levelSet = [];
     var item = { name: nextLevelName(), width: w, height: h, minstep: 0, lines: [], points: [], tasks: [] };
@@ -1394,12 +1455,14 @@
       if (!it || typeof it !== 'object') { toast('导入失败：第 ' + (i + 1) + ' 个关卡数据无效'); return false; }
       var w = parseInt(it.width, 10), h = parseInt(it.height, 10);
       if (isNaN(w) || isNaN(h) || w < 0 || h < 0 || (w === 0 && h === 0)) { toast('导入失败：第 ' + (i + 1) + ' 个关卡宽高无效'); return false; }
+      if (w > 32 || h > 32) { toast('导入失败：第 ' + (i + 1) + ' 个关卡宽或高超过 32'); return false; }
       it.width = w; it.height = h;
       if (!Array.isArray(it.lines)) it.lines = [];
       if (!Array.isArray(it.points)) it.points = [];
       if (!Array.isArray(it.tasks)) it.tasks = [];
       else it.tasks = it.tasks.map(function (c) { return Array.isArray(c) ? c : [c]; });
       if (!it.name || typeof it.name !== 'string') it.name = 'level-' + (i + 1);
+      if (it.name.length > 128) it.name = it.name.slice(0, 128);   /* 关卡名称最多 128 个字符 */
       if (it.minstep === undefined) it.minstep = 0;
     }
     /* 关卡名去重（重复的追加序号） */
@@ -1569,6 +1632,10 @@
       if (idx < LINE_TOOLS.length) {
         e.preventDefault();
         selectTool('line', LINE_TOOLS[idx].id);
+      } else if (idx === LINE_TOOLS.length) {
+        /* 9：删除工具 */
+        e.preventDefault();
+        selectTool('delete', 'del');
       }
     }
   });

@@ -39,6 +39,38 @@
   var SEAT_LAYOUT = { 4: [1, 3, 5, 7], 6: [1, 2, 4, 5, 6, 8], 8: [1, 2, 3, 4, 5, 6, 7, 8] };
   function teamOf(seat) { return (seat - 1) % 4; }
   function seatList(n) { return SEAT_LAYOUT[n] || SEAT_LAYOUT[8]; }
+  /* 开局人数模式：固定 4/6/8，或范围（至多/至少）；范围模式下实际人数=进房人数（偶数且 4-8） */
+  var UP_COUNT_MODES = ['4', '6', '8', 'max6', 'max8', 'min4', 'min6'];
+  var UP_COUNT_LABELS = { '4': '4 人', '6': '6 人', '8': '8 人', max6: '至多 6 人', max8: '至多 8 人', min4: '至少 4 人', min6: '至少 6 人' };
+  function countLabel() {
+    var v = settings.count;
+    return UP_COUNT_LABELS[String(v)] || (v + ' 人');
+  }
+  function allowedCounts() {
+    var v = String(settings.count);
+    if (v === 'max6') return [4, 6];
+    if (v === 'min6') return [6, 8];
+    if (v === 'max8' || v === 'min4') return [4, 6, 8];
+    if (v === '6') return [6];
+    if (v === '8') return [8];
+    return [4];
+  }
+  function maxPlayers() {
+    var a = allowedCounts();
+    return a[a.length - 1];
+  }
+  function canStartWith(n) { return allowedCounts().indexOf(n) >= 0; }
+  /* 开局设置：初始级牌 2-A；初始主牌花色：开局指定 / 每局指定 / 具体花色 */
+  var UP_LEVEL_RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
+  var UP_TRUMP_MODES = ['declare', 'perRound', 's', 'h', 'c', 'd'];
+  var UP_TRUMP_LABELS = { declare: '开局指定', perRound: '每局指定', s: '黑桃', h: '红心', c: '梅花', d: '方块' };
+  function initLevelText() { return rankText(settings.initLevel || 2); }
+  function trumpModeLabel() { return UP_TRUMP_LABELS[settings.trumpMode] || '开局指定'; }
+  function fixedTrumpSuit() {
+    var m = settings.trumpMode;
+    return (m === 's' || m === 'h' || m === 'c' || m === 'd') ? m : null;
+  }
+  function isPerRoundTrump() { return settings.trumpMode === 'perRound'; }
   function nextSeat(seat, seats) {
     var i = seats.indexOf(seat);
     if (i < 0) return seats[0];
@@ -280,7 +312,7 @@
   var specViewed = false; /* 观战者：本局已看牌（不可撤销，下一局自动恢复） */
   var specIdx = 0;        /* 观战者看牌条：当前玩家下标 */
   var specViewedRound = -1;
-  var settings = { count: 4, counter: false, allowSpec: true, noChat: false, allowPrivateChat: false };
+  var settings = { count: 4, counter: false, allowSpec: true, noChat: false, allowPrivateChat: false, initLevel: 2, trumpMode: 'declare' };
   var settingsBackup = null;
   var openState = false;
   var lobbyState = null;   /* 非房主：最新 lobby 数据 */
@@ -331,7 +363,7 @@
         return;
       }
       if (game) { c.send({ t: 'reject', reason: '游戏已开始' }); try { c.close(); } catch (e) {} return; }
-      if (players.length >= settings.count) { c.send({ t: 'reject', reason: '房间已满' }); try { c.close(); } catch (e) {} return; }
+      if (players.length >= maxPlayers()) { c.send({ t: 'reject', reason: '房间已满' }); try { c.close(); } catch (e) {} return; }
       players.push({ id: connId(c), name: nm, ready: false, host: false, seat: 0 });
       c.send({ t: 'profiles', avatars: avatars });
       hostBroadcastLobby();
@@ -579,7 +611,7 @@
     else fallback();
   }
   function openRoomSummary() {
-    return '升级 | ' + settings.count + ' 人 | 主牌2' + (settings.allowSpec ? ' | 可观战' : '');
+    return '升级 | ' + countLabel() + ' | 主牌2' + (settings.allowSpec ? ' | 可观战' : '');
   }
   function registerOpenRoom(id, started) {
     if (!id) return;
@@ -637,10 +669,36 @@
 
   /* ---------- 创建设置 ---------- */
   function syncCountUI() {
-    $('up-count-label').textContent = settings.count + ' 人';
+    $('up-count-label').textContent = countLabel();
+    var il = $('up-initlevel-label');
+    if (il) il.textContent = initLevelText();
+    var tm = $('up-trumpmode-label');
+    if (tm) tm.textContent = trumpModeLabel();
   }
-  $('up-count-prev').addEventListener('click', function () { settings.count = settings.count === 4 ? 8 : (settings.count === 8 ? 6 : 4); syncCountUI(); });
-  $('up-count-next').addEventListener('click', function () { settings.count = settings.count === 4 ? 6 : (settings.count === 6 ? 8 : 4); syncCountUI(); });
+  function cycleCount(dir) {
+    var idx = UP_COUNT_MODES.indexOf(String(settings.count));
+    if (idx < 0) idx = 0;
+    settings.count = UP_COUNT_MODES[(idx + dir + UP_COUNT_MODES.length) % UP_COUNT_MODES.length];
+    syncCountUI();
+  }
+  function cycleInitLevel(dir) {
+    var idx = UP_LEVEL_RANKS.indexOf(settings.initLevel);
+    if (idx < 0) idx = 0;
+    settings.initLevel = UP_LEVEL_RANKS[(idx + dir + UP_LEVEL_RANKS.length) % UP_LEVEL_RANKS.length];
+    syncCountUI();
+  }
+  function cycleTrumpMode(dir) {
+    var idx = UP_TRUMP_MODES.indexOf(settings.trumpMode);
+    if (idx < 0) idx = 0;
+    settings.trumpMode = UP_TRUMP_MODES[(idx + dir + UP_TRUMP_MODES.length) % UP_TRUMP_MODES.length];
+    syncCountUI();
+  }
+  $('up-count-prev').addEventListener('click', function () { cycleCount(-1); });
+  $('up-count-next').addEventListener('click', function () { cycleCount(1); });
+  $('up-initlevel-prev').addEventListener('click', function () { cycleInitLevel(-1); });
+  $('up-initlevel-next').addEventListener('click', function () { cycleInitLevel(1); });
+  $('up-trumpmode-prev').addEventListener('click', function () { cycleTrumpMode(-1); });
+  $('up-trumpmode-next').addEventListener('click', function () { cycleTrumpMode(1); });
   function showCreate() {
     settingsBackup = JSON.parse(JSON.stringify(settings));
     hideModal($('up-wait-modal'));
@@ -670,7 +728,9 @@
   $('btn-up-create-back').addEventListener('click', function () {
     if (settingsBackup) settings = JSON.parse(JSON.stringify(settingsBackup));
     hideModal($('up-create-modal'));
-    showWait();
+    unregisterOpenRoom(myId);
+    try { if (peer) peer.destroy(); } catch (e) {}
+    location.href = 'index.html';   /* 返回主界面 */
   });
   $('btn-up-create').addEventListener('click', function () {
     try { localStorage.setItem('upCreateSettings', JSON.stringify(settings)); } catch (e) {}
@@ -707,7 +767,7 @@
     if (isHost) {
       $('btn-up-start').classList.remove('hidden');
       $('btn-up-ready').classList.add('hidden');
-      $('btn-up-start').disabled = players.length < settings.count || !players.every(function (p) { return p.host || p.ready; });
+      $('btn-up-start').disabled = !canStartWith(players.length) || !players.every(function (p) { return p.host || p.ready; });
     } else {
       $('btn-up-start').classList.add('hidden');
       var rd = $('btn-up-ready');
@@ -730,16 +790,17 @@
   });
   $('btn-up-start').addEventListener('click', function () {
     if (!isHost) return;
-    if (players.length !== settings.count) { toast('人数不足'); return; }
+    if (!canStartWith(players.length)) { toast('当前人数不符合开局设置'); return; }
     if (!players.every(function (p) { return p.host || p.ready; })) { toast('有玩家未准备'); return; }
     startMatch();
   });
 
   /* ---------- 开始对局（房主） ---------- */
   function startMatch() {
-    var seats = seatList(settings.count);
+    var seats = seatList(players.length);
     players.forEach(function (p, i) { p.seat = seats[i] || 0; });
-    session = { levels: [2, 2, 2, 2], round: 0, over: false, trumpSuit: null, nextDealerTeam: null, records: [] };
+    var initLv = settings.initLevel || 2;
+    session = { levels: [initLv, initLv, initLv, initLv], round: 0, over: false, trumpSuit: fixedTrumpSuit(), nextDealerTeam: null, records: [] };
     if (openState && myId) registerOpenRoom(myId, true);
     hideModal($('up-wait-modal'));
     dealRound(true);
@@ -761,10 +822,11 @@
   function playerOfId(id) { for (var i = 0; i < players.length; i++) if (players[i].id === id) return players[i]; return null; }
 
   function dealRound(first) {
+    if (resultTimer) { clearTimeout(resultTimer); resultTimer = null; }
     document.body.classList.remove('up-pre-game');
     hideModal($('up-create-modal'));
     lastDeclareEventSeq = 0;
-    var N = settings.count;
+    var N = players.length;
     var seats = seatList(N);
     var decks = N / 2;
     var deck = shuffle(newDeck(decks));
@@ -778,13 +840,17 @@
       idx += handSize;
     });
     var bottom = deck.slice(idx, idx + bottomSize);
+    var initLv = settings.initLevel || 2;
+    var fixedSuit = fixedTrumpSuit();
     var dealerSeat = (game && game.nextDealerSeat) ? game.nextDealerSeat : 0;
     var dealerTeam = dealerSeat ? teamOf(dealerSeat) : session.nextDealerTeam;
-    var levelRank = dealerTeam !== null && dealerTeam !== undefined ? session.levels[dealerTeam] : 2;
+    var levelRank = dealerTeam !== null && dealerTeam !== undefined ? session.levels[dealerTeam] : initLv;
+    var needDeclare = first || isPerRoundTrump();
+    var restrictedTeam = (!first && isPerRoundTrump() && dealerTeam !== null && dealerTeam !== undefined) ? dealerTeam : -1;
     var seatIds = {}, seatNames = {};
     players.forEach(function (p) { if (p.seat) { seatIds[p.seat] = p.id; seatNames[p.seat] = p.name; } });
     game = {
-      phase: first ? 'declare' : 'discard',
+      phase: needDeclare ? 'declare' : 'discard',
       round: session.round + 1,
       seatCount: N,
       seats: seats,
@@ -792,8 +858,8 @@
       seatNames: seatNames,
       dealerSeat: dealerSeat || 0,
       dealerTeam: (dealerTeam === null || dealerTeam === undefined) ? -1 : dealerTeam,
-      levelRank: first ? 2 : levelRank,
-      trumpSuit: first ? null : session.trumpSuit,
+      levelRank: first ? initLv : levelRank,
+      trumpSuit: needDeclare ? (first ? fixedSuit : null) : session.trumpSuit,
       hands: hands,
       counts: counts,
       bottom: bottom,
@@ -803,7 +869,13 @@
       discards: {},
       pendingDiscards: {},
       roundPoints: [0, 0, 0, 0],
-      declare: first ? { deadline: Date.now() + 10000, declarerSeat: 0, suit: null, cards: [], counterDeadline: 0, counterAllowed: false, eventSeq: 0, eventType: null, eventSuit: null, eventSeat: 0 } : null,
+      declare: needDeclare ? {
+        deadline: first ? Date.now() + 10000 : 0,   /* 第二局起“每局指定”不限时 */
+        declarerSeat: 0, suit: null, cards: [], counterDeadline: 0, counterAllowed: false,
+        restrictedTeam: restrictedTeam,   /* >=0 时仅该队可叫主/反主 */
+        fixedSuit: fixedSuit,             /* 指定花色模式：叫主不改变主牌花色 */
+        eventSeq: 0, eventType: null, eventSuit: null, eventSeat: 0
+      } : null,
       trick: null,
       trickLog: [],
       finished: {},
@@ -814,18 +886,20 @@
     mySeat = 0;
     players.forEach(function (p) { if (p.seat && ((isHost && p.host) || p.id === myId)) mySeat = p.seat; });
     if (isHost && !mySeat) { var hp = players.filter(function (p) { return p.host; })[0]; if (hp) mySeat = hp.seat; }
-    if (!first) {
+    if (!needDeclare) {
       assignBottom();
     } else {
       sel = {};
-      hostBroadcastLobby();
+      if (first) hostBroadcastLobby();
       sendAllState();
-      if (declareTimer) clearTimeout(declareTimer);
-      declareTimer = setTimeout(function () { concludeDeclare(); }, 10000);
+      if (first) {
+        if (declareTimer) clearTimeout(declareTimer);
+        declareTimer = setTimeout(function () { concludeDeclare(); }, 10000);
+      }
     }
   }
 
-  var declareTimer = null, counterTimer = null, trickTimer = null;
+  var declareTimer = null, counterTimer = null, trickTimer = null, resultTimer = null;
   var lastDeclareEventSeq = 0;   /* 已播报的亮主/反主事件序号 */
   function clearDeclareTimers() {
     if (declareTimer) { clearTimeout(declareTimer); declareTimer = null; }
@@ -841,10 +915,9 @@
     }
     game.dealerSeat = game.declare.declarerSeat;
     game.dealerTeam = teamOf(game.dealerSeat);
-    game.levelRank = 2;
-    game.trumpSuit = game.declare.suit;
-    session.trumpSuit = game.declare.suit;
-    session.levels[game.dealerTeam] = 2;
+    game.levelRank = session.levels[game.dealerTeam] || settings.initLevel || 2;
+    game.trumpSuit = game.declare.fixedSuit || game.declare.suit;
+    session.trumpSuit = game.trumpSuit;
     assignBottom();
   }
   function assignBottom() {
@@ -925,21 +998,24 @@
   }
   function doDeclare(seat, a) {
     var d = game.declare;
-    if (!d || Date.now() > d.deadline) return;
+    if (!d || (d.deadline && Date.now() > d.deadline)) return;   /* deadline=0 表示不限时 */
+    if (d.restrictedTeam >= 0 && teamOf(seat) !== d.restrictedTeam) return;   /* 每局指定：仅庄家队伍可叫主 */
     if (!handHas(seat, a.cards || [])) return;
     var cards = a.cards || [];
     if (!(cards.length === 1 || cards.length === 2)) return;
-    if (cards[0].s === 'j' || cards[0].r !== 2) return;
+    if (cards[0].s === 'j' || cards[0].r !== game.levelRank) return;
     if (cards.length === 2 && !(cards[0].r === cards[1].r && cards[0].s === cards[1].s)) return;
+    var fixedMode = !!d.fixedSuit;
+    var evSuit = fixedMode ? d.fixedSuit : cards[0].s;
     var msgTime = typeof a.time === 'number' ? a.time : Date.now();
     if (!d.declarerSeat) {
       d.declarerSeat = seat;
-      d.suit = cards[0].s;
+      d.suit = evSuit;
       d.cards = cards;
       d.declareTime = msgTime;
       d.counterDeadline = Date.now() + 5000;
       d.counterAllowed = cards.length === 1;
-      recordDeclareEvent('declare', seat, cards[0].s);
+      recordDeclareEvent('declare', seat, evSuit);
       clearDeclareTimers();
       if (d.counterAllowed) counterTimer = setTimeout(function () { concludeDeclare(); }, 5000);
       else concludeDeclare();
@@ -950,25 +1026,25 @@
     if (d.counterAllowed && cards.length === 1) {
       if (d.declareTime && msgTime < d.declareTime - 100) {
         d.declarerSeat = seat;
-        d.suit = cards[0].s;
+        d.suit = evSuit;
         d.cards = cards;
         d.declareTime = msgTime;
         d.counterDeadline = Date.now() + 5000;
-        recordDeclareEvent('declare', seat, cards[0].s);
+        recordDeclareEvent('declare', seat, evSuit);
         clearDeclareTimers();
         counterTimer = setTimeout(function () { concludeDeclare(); }, 5000);
         sendAllState();
       }
       return;
     }
-    /* 反主：同花对管住单张（不能反自己） */
-    if (d.counterAllowed && cards.length === 2 && cards[0].s !== d.suit && seat !== d.declarerSeat) {
+    /* 反主：同花对管住单张（不能反自己）；指定花色模式下花色固定，对子只需为同级牌对子 */
+    if (d.counterAllowed && cards.length === 2 && (fixedMode || cards[0].s !== d.suit) && seat !== d.declarerSeat) {
       d.declarerSeat = seat;
-      d.suit = cards[0].s;
+      d.suit = evSuit;
       d.cards = cards;
       d.counterAllowed = false;
       d.counterDeadline = 0;
-      recordDeclareEvent('counter', seat, cards[0].s);
+      recordDeclareEvent('counter', seat, evSuit);
       clearDeclareTimers();
       sendAllState();
       concludeDeclare();
@@ -1220,11 +1296,12 @@
   /* ---------- 结算 / 升级 ---------- */
   function finishRound() {
     game.phase = 'over';
-    var N = settings.count, S = 50 * N;
+    var N = game.seatCount || players.length, S = 50 * N;
     var D = game.roundPoints[game.dealerTeam] || 0;
     var dt = game.dealerTeam;
     var prevLevels = session.levels.slice();
     var result = applySettlement(D, S, dt);
+    if (!result.matchOver) result.nextAt = Date.now() + 5000;
     game.result = result;
     /* 记录本局（供“查看记录”使用） */
     var recTeams = [];
@@ -1349,7 +1426,7 @@
       matchOver = true;
       var primaryWin = (r3 && r3.team >= 0) ? r3.team : (r2 && r2.team >= 0 ? r2.team : (typeof r !== 'undefined' && r && r.team >= 0 ? r.team : nextTeam));
       if (winners.length > 1 && winners.indexOf(primaryWin) >= 0) winners = [primaryWin];
-      lines.push('🎉 ' + winners.map(teamName).join('、') + ' 过 A，获得整场胜利！');
+      lines.push(winners.map(teamName).join('、') + '获胜');
     }
     return { levels: levels, nextDealerTeam: nextTeam, nextDealerSeat: nextSeat || teammateSeat(nextTeam), matchOver: matchOver, winners: winners, lines: lines, dealerPoints: D };
   }
@@ -1361,21 +1438,42 @@
     return game.seats.filter(function (s) { return teamOf(s) === t; });
   }
 
-  function showResult() {
-    if (!game || !game.result) return;
-    var lines = game.result.lines || [];
-    var head = game.result.matchOver ? '整场结束' : '第 ' + (session.round) + ' 局结束';
-    $('up-result-title').textContent = head;
-    $('up-result-text').innerHTML = lines.join('<br>');
-    $('btn-up-next-round').classList.toggle('hidden', !!game.result.matchOver || isSpec);
-    showModal($('up-result-modal'));
+  function resultTextHtml() {
+    var lines = (game.result.lines || []).slice();
+    if (!game.result.matchOver && game.result.nextAt) {
+      var left = Math.max(0, Math.ceil((game.result.nextAt - Date.now()) / 1000));
+      lines.push(left + 's后开始下一局');
+    }
+    return lines.join('<br>');
   }
-  $('btn-up-result-home').addEventListener('click', function () { location.href = 'index.html'; });
-  $('btn-up-next-round').addEventListener('click', function () {
+  function updateResultCountdown() {
+    if (!game || !game.result || game.result.matchOver || !game.result.nextAt) return;
+    if ($('up-result-modal').classList.contains('hidden')) return;
+    $('up-result-text').innerHTML = resultTextHtml();
+  }
+  function autoNextRound() {
+    resultTimer = null;
     if (!isHost || !session || session.over) return;
+    if (!game || game.phase !== 'over' || !game.result || game.result.matchOver) return;
     hideModal($('up-result-modal'));
     dealRound(false);
-  });
+  }
+  function showResult() {
+    if (!game || !game.result) return;
+    var over = !!game.result.matchOver;
+    $('up-result-title').textContent = over ? '游戏结束' : '本局结束';
+    $('up-result-text').innerHTML = resultTextHtml();
+    $('btn-up-result-home').classList.toggle('hidden', !over);
+    showModal($('up-result-modal'));
+    if (over) {
+      if (resultTimer) { clearTimeout(resultTimer); resultTimer = null; }
+      return;
+    }
+    if (isHost && !resultTimer) {
+      resultTimer = setTimeout(autoNextRound, Math.max(0, (game.result.nextAt || (Date.now() + 5000)) - Date.now()));
+    }
+  }
+  $('btn-up-result-home').addEventListener('click', function () { location.href = 'index.html'; });
 
   /* ---------- 查看记录 ---------- */
   var UP_CN_NUM = ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
@@ -1602,7 +1700,7 @@
     var grid = $('up-counter-grid');
     if (!grid || !grid.children.length) initCounter();
     if (!game) return;
-    var decks = (game.seatCount || settings.count || 4) / 2;
+    var decks = (game.seatCount || 4) / 2;
     var trumpCounts = {}, plainCounts = {};
     collectPlayedCards().forEach(function (c) {
       if (isTrump(c)) trumpCounts[c.r] = (trumpCounts[c.r] || 0) + 1;
@@ -2017,8 +2115,8 @@
     if (game.phase === 'declare') {
       var d = game.declare;
       if (!d.declarerSeat) {
-        phaseText = '亮主阶段';
-        sub.push(Math.max(0, Math.ceil((d.deadline - Date.now()) / 1000)) + 's');
+        phaseText = d.restrictedTeam >= 0 ? '庄家队伍亮主' : '亮主阶段';
+        if (d.deadline) sub.push(Math.max(0, Math.ceil((d.deadline - Date.now()) / 1000)) + 's');
       } else if (d.counterAllowed) {
         phaseText = '反主阶段';
         sub.push(Math.max(0, Math.ceil((d.counterDeadline - Date.now()) / 1000)) + 's');
@@ -2668,20 +2766,27 @@
     updateActionLabels();
     updateHandBtn();
   }
+  function declareRestrictedToMe() {
+    return !!(game && game.declare && game.declare.restrictedTeam >= 0 && teamOf(mySeat) !== game.declare.restrictedTeam);
+  }
   function canDeclare() {
+    if (declareRestrictedToMe()) return false;
     var hand = game.hands[mySeat] || [];
-    return hand.some(function (c) { return c.r === 2 && c.s !== 'j'; });
+    return hand.some(function (c) { return c.r === game.levelRank && c.s !== 'j'; });
   }
   function canCounter() {
+    if (declareRestrictedToMe()) return false;
     var hand = game.hands[mySeat] || [];
+    var fixed = !!(game.declare && game.declare.fixedSuit);
     var cnt = {};
-    hand.forEach(function (c) { if (c.r === game.levelRank && c.s !== 'j' && c.s !== game.declare.suit) cnt[c.s] = (cnt[c.s] || 0) + 1; });
+    hand.forEach(function (c) { if (c.r === game.levelRank && c.s !== 'j' && (fixed || c.s !== game.declare.suit)) cnt[c.s] = (cnt[c.s] || 0) + 1; });
     return Object.keys(cnt).some(function (s) { return cnt[s] >= 2; });
   }
   function declareBarText() {
     if (!game || game.phase !== 'declare') return '';
     var d = game.declare;
     if (!d.declarerSeat) {
+      if (!d.deadline) return (d.restrictedTeam >= 0 ? '庄家队伍亮主（不限时）' : '等待亮主（不限时）') + '（点击亮主/反主按钮前先选择级牌）';
       var left = Math.max(0, Math.ceil((d.deadline - Date.now()) / 1000));
       return '亮主倒计时 ' + left + 's（点击亮主/反主按钮前先选择级牌）';
     }
@@ -3131,12 +3236,15 @@
       declareBar.textContent = declareBarText();
       renderStatus();
     }
+    updateResultCountdown();
   }, 500);
 
   /* ---------- 启动 ---------- */
   try {
     var saved = JSON.parse(localStorage.getItem('upCreateSettings'));
-    if (saved && (saved.count === 4 || saved.count === 6 || saved.count === 8)) settings.count = saved.count;
+    if (saved && UP_COUNT_MODES.indexOf(String(saved.count)) >= 0) settings.count = String(saved.count);
+    if (saved && typeof saved.initLevel === 'number' && saved.initLevel >= 2 && saved.initLevel <= 14) settings.initLevel = saved.initLevel;
+    if (saved && UP_TRUMP_MODES.indexOf(String(saved.trumpMode)) >= 0) settings.trumpMode = String(saved.trumpMode);
     if (saved && typeof saved.counter === 'boolean') settings.counter = saved.counter;
     if (saved && typeof saved.allowSpec === 'boolean') settings.allowSpec = saved.allowSpec;
     if (saved && typeof saved.noChat === 'boolean') settings.noChat = saved.noChat;
@@ -3166,7 +3274,14 @@
   if (params.get('debug') === '1') {
     window.__up = {
       setPlayers: function (list) { players = list; },
-      setCount: function (n) { settings.count = n; },
+      setCount: function (n) { settings.count = String(n); },
+      setInitLevel: function (n) { settings.initLevel = n; },
+      setTrumpMode: function (m) { settings.trumpMode = String(m); },
+      settings: function () { return settings; },
+      renderLobby: renderLobby,
+      countLabel: countLabel,
+      maxPlayers: maxPlayers,
+      allowedCounts: allowedCounts,
       startMatch: startMatch,
       doDeclare: doDeclare,
       doDiscard: doDiscard,
