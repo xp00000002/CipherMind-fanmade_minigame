@@ -35,6 +35,8 @@
   var segs = {}, verts = {}, stage = null;
   var levels = [], curIdx = 0;
   var state = null, winDone = false;
+  /* 当前局序号：重新开始/切关时自增，用于作废上一局遗留的延时回调 */
+  var runSeq = 0;
   var settings = { panelScale: 100, benchScale: 100, dirMode: 'absolute', animHint: true, playerOpacity: 100, showFacing: true, passLine: 'fill', passRedLine: 'gone', showAnim: true, animSpeed: 100 };
   function wireListScroll(bodyEl, sbEl, thEl) {
     if (!bodyEl || !sbEl || !thEl) return function () {};
@@ -291,6 +293,12 @@
 
   function startLevel(i) {
     if (!levels.length) return;
+    /* 强制中断上一局仍在进行的移动/传送/线动画回调 */
+    runSeq++;
+    clearWinTimer();
+    if (pendingGridTimer) { clearTimeout(pendingGridTimer); pendingGridTimer = null; }
+    lineFxUntil = 0;
+    fxHiddenKey = null;
     curIdx = Math.max(0, Math.min(levels.length - 1, i));
     decodeLevel(levels[curIdx]);
     var sx = null, sy = null;
@@ -742,7 +750,8 @@
     if (won) { showWinDialog(); return; }
     if (!canMoveAny()) showDialog('你已经无法移动', true, false);
   }
-  function startPortalAnim() {
+  function startPortalAnim(seq) {
+    if (seq !== runSeq) return;
     var pt = state.pendingTp;
     if (!pt) return;
     /* 基准 0.2s：0.1s 淡出 + 0.1s 淡入 */
@@ -751,12 +760,16 @@
     var p = document.getElementById('tl-player');
     if (p) fadeOutPair(p, fadeSec);
     setTimeout(function () {
+      if (seq !== runSeq) return;
       state.x = pt.tx;
       state.y = pt.ty;
       renderGrid();
       var p2 = document.getElementById('tl-player');
       if (p2) fadeInPair(p2, fadeSec);
-      setTimeout(function () { finalizeTeleport(); }, half);
+      setTimeout(function () {
+        if (seq !== runSeq) return;
+        finalizeTeleport();
+      }, half);
     }, half);
   }
 
@@ -765,6 +778,7 @@
     if (state.teleporting) return;   /* 传送动画期间不可输入 */
     if (state.animBusy) return;      /* 线/点动画未结束前不可移动 */
     if (!edgeUsable(state.x, state.y, d)) return;
+    var seq = runSeq;                /* 本步的局序号：延时回调据此判断是否已重开 */
     var D = DIRS[d];
     var nx = state.x + D.dx, ny = state.y + D.dy;
     var key = D.dx !== 0 ? segKey('h', Math.min(state.x, nx), state.y) : segKey('v', state.x, Math.min(state.y, ny));
@@ -808,11 +822,18 @@
         state.pendingTp = { tx: partner[0], ty: partner[1] };
         if (settings.showAnim) {
           playMovePlayer(ox, oy, nx, ny);
-          setTimeout(function () { renderGrid(); startPortalAnim(); }, animMs(130));
+          setTimeout(function () {
+            if (seq !== runSeq) return;
+            renderGrid();
+            startPortalAnim(seq);
+          }, animMs(130));
         } else {
           /* 无动画：在原传送门停留 0.2s 后直接传送 */
           renderGrid();
-          setTimeout(finalizeTeleport, animMs(200));
+          setTimeout(function () {
+            if (seq !== runSeq) return;
+            finalizeTeleport();
+          }, animMs(200));
         }
         return;
       }
@@ -828,6 +849,7 @@
     }
     playMovePlayer(ox, oy, nx, ny);
     setTimeout(function () {
+      if (seq !== runSeq) return;   /* 已重新开始：丢弃本步的收尾动画/结算 */
       /* 小球动画已完成：立即允许下一步；线动画独立进行，不再整幅重绘 */
       if (fx) {
         lineFxUntil = Date.now() + animMs(130);
@@ -838,6 +860,7 @@
             el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: animMs(100), easing: 'linear', fill: 'forwards' });
             (function (node) {
               setTimeout(function () {
+                if (seq !== runSeq) return;
                 if (node && node.parentNode) node.parentNode.removeChild(node);
                 refreshDots();
               }, animMs(110));
@@ -861,6 +884,7 @@
           if (oldNode) {
             (function (node) {
               setTimeout(function () {
+                if (seq !== runSeq) return;
                 if (node && node.parentNode) node.parentNode.removeChild(node);
                 refreshDots();
               }, animMs(110));
@@ -1423,6 +1447,8 @@
     if (!winDone) return;                 /* 仅在胜利时记录 */
     if (!levels[curIdx]) return;
     var lvl = levels[curIdx];
+    /* 通关即解锁下一关，不依赖玩家是否点击“下一关” */
+    saveUnlocked(Math.min(curIdx + 1, levels.length - 1));
     var results = [];
     (Array.isArray(lvl.tasks) ? lvl.tasks : []).forEach(function (task) {
       var conds = Array.isArray(task) ? task : [task];

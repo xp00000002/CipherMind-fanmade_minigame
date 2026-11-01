@@ -96,6 +96,8 @@
     if (currentItem) {
       ensureSolvedFlag(currentItem);
       currentItem._solved = false;
+      /* 关卡几何已改动：理论最短步数失效，测试/保存前需重新求解 */
+      currentItem.minstep = 0;
     }
   }
   function markLevelSolved(ok) {
@@ -1255,29 +1257,34 @@
     });
   }
 
-  /* 关卡集保存校验（写入文件前的约束检查） */
-  function validateItemRaw(it) {
+  /* 关卡点集校验：起点/终点各 1 个；同一编号传送门必须成对（0 或 2 个） */
+  function pointsError(points) {
     var start = 0, end = 0;
     var pc = { 1: 0, 2: 0, 3: 0, 4: 0 };
-    var endPos = null;
-    var ok = true;
-    (it.points || []).forEach(function (p) {
-      var x = parseInt(p[0], 10), y = parseInt(p[1], 10), tp = parseInt(p[2], 10);
-      var pos = x + ',' + y;
+    (points || []).forEach(function (p) {
+      if (!Array.isArray(p) || p.length < 3) return;
+      var tp = parseInt(p[2], 10);
       if (tp === 0) start++;
-      else if (tp === 1) { end++; endPos = pos; }
+      else if (tp === 1) end++;
       else if (tp === -1) pc[1]++;
       else if (tp === -2) pc[2]++;
       else if (tp === -3) pc[3]++;
       else if (tp === -4 || tp === -5) pc[4]++;
     });
-    if (start !== 1) ok = false;
-    if (end !== 1) ok = false;
-    if (ok) {
-      for (var l = 1; l <= 4; l++) if (pc[l] !== 0 && pc[l] !== 2) ok = false;
+    if (start !== 1) return '起点必须恰好 1 个（当前 ' + start + ' 个）';
+    if (end !== 1) return '终点必须恰好 1 个（当前 ' + end + ' 个）';
+    for (var l = 1; l <= 4; l++) {
+      if (pc[l] !== 0 && pc[l] !== 2) return '传送门 ' + l + ' 未成对（当前 ' + pc[l] + ' 个）';
     }
-    if (!ok) return (it.name || 'level') + ': 缺少起点/终点，或传送门未成对出现';
     return null;
+  }
+  /* 关卡集保存校验（写入文件前的约束检查） */
+  function validateItemRaw(it) {
+    return pointsError(it.points || []);
+  }
+  /* 当前编辑中的实时网格校验（求解前使用） */
+  function liveStructureError() {
+    return pointsError(livePoints());
   }
 
   function sanitizeName(n) {
@@ -1681,6 +1688,9 @@
   /* 纯求解器：基于当前全局网格（segs/vertices/stage）判断可解并返回最短步数 */
   function solveLevel() {
     if (!stage) return { ok: false, dist: 0 };
+    /* 结构不合法（如传送门未成对）不允许求解 */
+    var structErr = liveStructureError();
+    if (structErr) return { ok: false, dist: 0, error: structErr };
     /* 收集任务线 / 红线 / 传送门对 */
     var taskKeys = [], redKeys = [];
     Object.keys(segs).forEach(function (k) {
@@ -1840,7 +1850,7 @@
       $('btn-solve-export').style.display = '';
     } else {
       solveResult = { ok: false, dist: -1 };
-      $('solve-msg').textContent = '无解';
+      $('solve-msg').textContent = r.error ? ('无法验证：' + r.error) : '无解';
       $('btn-solve-export').disabled = true;
       $('btn-solve-export').style.display = 'none';
     }
@@ -2426,6 +2436,11 @@
   function launchTest() {
     if (!levelSet || !levelSet.length || !currentItem) { toast('请先创建并选择一个关卡'); return; }
     persistLiveTo(currentItem);
+    /* 未求解的关卡不沿用旧的最短步数（修改后应先重新验证可解性） */
+    levelSet.forEach(function (it) {
+      ensureSolvedFlag(it);
+      if (!it._solved) it.minstep = 0;
+    });
     var idx = levelSet.indexOf(currentItem);
     var raw = JSON.stringify(editorSettings.unordered ? ['unordered'].concat(levelSet) : levelSet);
     try {
