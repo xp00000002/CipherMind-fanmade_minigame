@@ -217,7 +217,7 @@
   }
 
   function initHost() {
-    peer = new Peer();
+    peer = window.makePeer ? window.makePeer() : new Peer();
     peer.on('open', function (id) {
       myId = id;
       players = [{ id: 'host', name: myName, ready: false, host: true }];
@@ -238,7 +238,7 @@
     peer.on('error', function () {});
   }
   function initJoin() {
-    peer = new Peer();
+    peer = window.makePeer ? window.makePeer() : new Peer();
     peer.on('open', function (id) {
       myId = id;
       selfPeerId = id;
@@ -1737,15 +1737,17 @@
     return parts.length ? parts.join(' | ') : 'Default';
   }
   function registerOpenRoom(id, open) {
-    var list = [];
-    try {
-      var raw = JSON.parse(localStorage.getItem('cmchessOpenRooms'));
-      if (raw && Array.isArray(raw)) list = raw;
-    } catch (e) {}
-    var now = Date.now();
-    list = list.filter(function (r) { return r && r.id !== id && now - (r.ts || 0) < 180000; });
-    if (open) list.push({ id: id, hostName: myName, rules: openRoomSummary(), gameStarted: !!game, allowSpec: false, noChat: false, ts: now, game: 'zjh' });
-    try { localStorage.setItem('cmchessOpenRooms', JSON.stringify(list)); } catch (e) {}
+    if (!id) return;
+    if (!open) { Rooms.unregister(id); return; }
+    Rooms.register({
+      id: id,
+      game: 'zjh',
+      hostName: myName,
+      rules: openRoomSummary(),
+      gameStarted: !!game,
+      allowSpec: false,
+      noChat: false
+    });
   }
 
   /* ---------- 启动 ---------- */

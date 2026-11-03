@@ -379,7 +379,82 @@
     toolId = id;
     renderToolBar();
   }
+
+  /* ---------- 工具悬停提示 ---------- */
+  var TOOL_LABELS = {
+    n: '普通线', a: '箭头线', t: '任务线', ta: '任务箭头线',
+    rn: '红线', ra: '红箭头线', rt: '任务红线', rta: '红任务箭头线',
+    del: '删除', portal: '传送门', start: '起点', end: '终点'
+  };
+  var tooltipEl = null;
+  var tooltipTimer = null;
+  var tooltipState = null;
+  var TOOLTIP_DELAY = 350;
+
+  function ensureTooltip() {
+    if (!tooltipEl) {
+      tooltipEl = document.createElement('div');
+      tooltipEl.className = 'tl-tool-tip';
+      tooltipEl.style.display = 'none';
+      document.body.appendChild(tooltipEl);
+    }
+    return tooltipEl;
+  }
+  function lineToolHeight() {
+    var b = document.querySelector('.editor-page .tl-line');
+    var h = b ? b.getBoundingClientRect().height : 0;
+    return h > 0 ? h : 24;
+  }
+  function hideToolTooltip() {
+    if (tooltipTimer) { clearTimeout(tooltipTimer); tooltipTimer = null; }
+    tooltipState = null;
+    if (tooltipEl) tooltipEl.style.display = 'none';
+  }
+  function placeTooltip(x, y) {
+    var t = ensureTooltip();
+    var w = t.offsetWidth, h = t.offsetHeight;
+    var gap = Math.max(6, h * 0.25);
+    var left = x - w - gap;
+    if (left < 8) left = x + gap;
+    if (left + w > window.innerWidth - 8) left = Math.max(8, window.innerWidth - w - 8);
+    var top = y - h / 2;
+    if (top < 8) top = 8;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
+    t.style.left = Math.round(left) + 'px';
+    t.style.top = Math.round(top) + 'px';
+  }
+  function showToolTooltip() {
+    if (!tooltipState) return;
+    var t = ensureTooltip();
+    var h = lineToolHeight();
+    t.textContent = tooltipState.text;
+    t.style.fontSize = (h * 0.5) + 'px';
+    t.style.lineHeight = '1';
+    t.style.padding = (h * 0.25) + 'px';
+    t.style.display = 'block';
+    placeTooltip(tooltipState.x, tooltipState.y);
+  }
+  function scheduleTooltip(btn, text, x, y) {
+    hideToolTooltip();
+    tooltipState = { btn: btn, text: text, x: x, y: y };
+    tooltipTimer = setTimeout(function () {
+      tooltipTimer = null;
+      if (!tooltipState || tooltipState.btn !== btn) return;
+      showToolTooltip();
+    }, TOOLTIP_DELAY);
+  }
+  function updateTooltipPosition(btn, x, y) {
+    if (!tooltipState || tooltipState.btn !== btn) return;
+    tooltipState.x = x;
+    tooltipState.y = y;
+    if (tooltipEl && tooltipEl.style.display !== 'none') placeTooltip(x, y);
+  }
+  window.addEventListener('scroll', hideToolTooltip, true);
+  window.addEventListener('resize', hideToolTooltip);
+  window.addEventListener('blur', hideToolTooltip);
+
   function renderToolBar() {
+    hideToolTooltip();
     var bar = $('toolbar');
     if (!bar) return;
     bar.innerHTML = '';
@@ -397,6 +472,15 @@
       im.style.setProperty('--tool-scale', imgScale);
       b.appendChild(im);
       b.addEventListener('click', function () { selectTool(kind, id); });
+      var label = TOOL_LABELS[id] || String(id);
+      b.addEventListener('mouseenter', function (ev) {
+        scheduleTooltip(b, label, ev.clientX, ev.clientY);
+      });
+      b.addEventListener('mousemove', function (ev) {
+        updateTooltipPosition(b, ev.clientX, ev.clientY);
+      });
+      b.addEventListener('mouseleave', hideToolTooltip);
+      b.addEventListener('pointerdown', hideToolTooltip);
       return b;
     }
 
@@ -626,10 +710,10 @@
     if (bd <= thr) return best;
     return null;
   }
-  function nearestVertex(p) {
+  function nearestVertex(p, thrOverride) {
     if (!stage) return null;
     var best = null, bd = Infinity;
-    var thr = Math.max(10, e * 0.45);
+    var thr = thrOverride === undefined || thrOverride === null ? Math.max(10, e * 0.45) : thrOverride;
     for (var y = 0; y <= stage.h; y++) {
       for (var x = 0; x <= stage.w; x++) {
         var d = Math.hypot(p.x - x * e, p.y - y * e);
@@ -702,7 +786,10 @@
   /* 删除工具：优先删除点击处的特殊点，否则删除最近的线 */
   function deleteAtPoint(p) {
     if (!stage) return;
-    var vt = nearestVertex(p);
+    /* 电脑端删除工具：只把较小的区域判定为“点”，避免点抢走附近线条的点击；
+       平板/手机保持原来的大热区。 */
+    var vertexThr = window.innerWidth > 900 ? Math.max(6, e * 0.12) : null;
+    var vt = nearestVertex(p, vertexThr);
     var vk = vt ? vertexKey(vt.x, vt.y) : null;
     var v = vk ? vertices[vk] : null;
     var hasPoint = !!(v && (v.start || v.end || v.portal));
@@ -943,16 +1030,43 @@
 
   /* 弹窗确认（ask-modal） */
   var askFn = null;
-  function askConfirm(title, text, fn) {
+  var askDelayTimer = null;
+  function clearAskDelay() {
+    if (askDelayTimer) { clearInterval(askDelayTimer); askDelayTimer = null; }
+    var yes = $('ask-yes');
+    if (yes) { yes.disabled = false; yes.textContent = '确定'; }
+  }
+  function startAskDelay(seconds) {
+    var yes = $('ask-yes');
+    var remain = Math.max(1, parseInt(seconds, 10) || 5);
+    yes.disabled = true;
+    yes.textContent = '确定(' + remain + 's)';
+    askDelayTimer = setInterval(function () {
+      remain--;
+      if (remain <= 0) {
+        clearInterval(askDelayTimer);
+        askDelayTimer = null;
+        yes.disabled = false;
+        yes.textContent = '确定';
+      } else {
+        yes.textContent = '确定(' + remain + 's)';
+      }
+    }, 1000);
+  }
+  function askConfirm(title, text, fn, delaySec) {
+    clearAskDelay();
     $('ask-title').textContent = title || '确认';
     $('ask-text').textContent = text || '';
     askFn = fn;
     showModal($('ask-modal'));
+    if (delaySec > 0) startAskDelay(delaySec);
   }
-  $('ask-no').addEventListener('click', function () { askFn = null; hideModal($('ask-modal')); });
+  $('ask-no').addEventListener('click', function () { askFn = null; clearAskDelay(); hideModal($('ask-modal')); });
   $('ask-yes').addEventListener('click', function () {
+    if (this.disabled) return;
     var fn = askFn;
     askFn = null;
+    clearAskDelay();
     hideModal($('ask-modal'));
     if (fn) fn();
   });
@@ -1246,7 +1360,7 @@
         } catch (e) {}
       }
       wsGoBack();
-    });
+    }, 5);
   }
   function clearLevelSet() {
     askConfirm('清空关卡集', '确定清空整个关卡集吗？所有关卡都会被删除，且无法撤销。', function () {
@@ -1939,12 +2053,9 @@
         portalPair[list[1][0] + ',' + list[1][1]] = list[0];
       }
     }
-    /* 左转/传送门条件：把计数纳入状态去重，并按最大值剪枝 */
-    var useLeft = false, usePortal = false, leftMax = null, portalMax = null;
-    conds.forEach(function (c) {
-      if (c.type === 2) { useLeft = true; if (c.maxstep !== null && c.maxstep !== undefined) leftMax = c.maxstep; }
-      if (c.type === 4) { usePortal = true; if (c.maxstep !== null && c.maxstep !== undefined) portalMax = c.maxstep; }
-    });
+    /* 搜索树必须与“左转/传送门”等条件无关：
+       这些条件只在胜利时过滤，否则增加条件会改变路径去重/剪枝，
+       出现“限制更多反而导出更多解”的问题。 */
     function popcount(v) { var c = 0; while (v) { c += v & 1; v >>= 1; } return c; }
     var endKey = null;
     void endKey;
@@ -1988,8 +2099,6 @@
         var total = steps + 1;
         var rec = { left: face >= 0 && d !== face ? 1 : 0, red: meta.red ? 1 : 0, portal: tp ? 1 : 0, zh: D.zh };
         var lefts2 = lefts + rec.left, portals2 = portals + rec.portal;
-        if (leftMax !== null && lefts2 > leftMax) continue;
-        if (portalMax !== null && portals2 > portalMax) continue;
         if (won) {
           if (total >= mn && total <= mx && condsPass(total, popcount(reds2), lefts2, portals2, d)) {
             var solLines = pathLines.slice(1).concat([line]);
@@ -2008,7 +2117,9 @@
           }
           continue;   /* 胜利即结束该分支 */
         }
-        var vkey = fx + ',' + fy + '|' + d + '|' + tasks2 + '|' + reds2 + (useLeft ? '|' + lefts2 : '') + (usePortal ? '|' + portals2 : '');
+        /* 去重键固定为“位置|朝向|任务线|红线”，不含左转/传送门计数：
+           保证不同限制条件使用同一棵搜索树，结果只可能减少；同一核心状态的绕圈不重复展开。 */
+        var vkey = fx + ',' + fy + '|' + d + '|' + tasks2 + '|' + reds2;
         /* 完整枚举（路径内去重，回溯时清除）：不丢解 */
         if (visitedPath[vkey]) continue;
         visitedPath[vkey] = true;
@@ -2028,7 +2139,7 @@
     out.push('最短步数：' + solveResult.dist);
     out.push('限制条件：' + (conds.length ? conds.map(condLabel).join('；') : '无'));
     out.push('解法数量：' + solutions.length);
-    if (searchTruncated) out.push('（搜索量过大，结果可能不完整）');
+    if (searchTruncated || solutions.length >= SOLVE_CAP) out.push('（解法数量达到上限或搜索量过大，结果可能不完整）');
     out.push('');
     solutions.forEach(function (sol, i) {
       out.push('===== 解法 ' + (i + 1) + '（' + sol.len + ' 步） =====');

@@ -174,7 +174,7 @@
   // 使用 PeerJS 默认云信令（original 联机方式）
   function startPeer(opts, index) {
     destroyPeer();
-    var p = new Peer();
+    var p = global.makePeer ? global.makePeer() : new Peer();
     peer = p;
     var settled = false;
 

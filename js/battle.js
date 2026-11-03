@@ -559,7 +559,7 @@
     renderLobby();
   }
   function initHost() {
-    peer = new Peer({ config: { iceServers: ICE_SERVERS } });
+    peer = window.makePeer ? window.makePeer() : new Peer({ config: { iceServers: ICE_SERVERS } });
     peer.on('open', function (id) {
       myId = id;
       console.log('[battle] 房主 peer 就绪', id);
@@ -616,7 +616,7 @@
     }, 20000);
   }
   function initJoin() {
-    peer = new Peer({ config: { iceServers: ICE_SERVERS } });
+    peer = window.makePeer ? window.makePeer() : new Peer({ config: { iceServers: ICE_SERVERS } });
     peer.on('open', function (id) {
       myId = id;
       selfPeerId = id;
@@ -2899,25 +2899,21 @@
   }
   /* 开放房间注册：开局后不接受加入（斗地主固定 3 人，无观战） */
   function registerOpenRoom(id, open) {
-    var list = [];
-    try {
-      var raw = JSON.parse(localStorage.getItem('cmchessOpenRooms'));
-      if (raw && Array.isArray(raw)) list = raw;
-    } catch (e) {}
-    var now = Date.now();
-    list = list.filter(function (r) { return r && r.id !== id && now - (r.ts || 0) < 180000; });
-    if (open) list.push({ id: id, hostName: myName, rules: openRoomSummary(), gameStarted: false, allowSpec: false, noChat: false, ts: now, game: 'battle' });
-    try { localStorage.setItem('cmchessOpenRooms', JSON.stringify(list)); } catch (e) {}
+    if (!id) return;
+    if (!open) { Rooms.unregister(id); return; }
+    Rooms.register({
+      id: id,
+      game: 'battle',
+      hostName: myName,
+      rules: openRoomSummary(),
+      gameStarted: false,
+      allowSpec: false,
+      noChat: false
+    });
   }
   function unregisterOpenRoom(id) {
     if (!id) return;
-    try {
-      var list = JSON.parse(localStorage.getItem('cmchessOpenRooms'));
-      if (Array.isArray(list)) {
-        list = list.filter(function (r) { return r && r.id !== id; });
-        localStorage.setItem('cmchessOpenRooms', JSON.stringify(list));
-      }
-    } catch (e) {}
+    Rooms.unregister(id);
   }
 
   /* ---------- 平板/手机端布局（仿 chess/zjh：内容移入上下容器） ---------- */

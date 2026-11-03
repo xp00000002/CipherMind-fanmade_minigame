@@ -3265,6 +3265,24 @@ h1, h2, h3, b, strong { font-weight: 400; }
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
+/* 工具名称悬停提示：背景 #000000D3，文字 #FFD038，字体沿用页面字体。
+   字号/内边距由 JS 按线工具高度 h 设置：文字 0.5h，四边留白 0.25h。 */
+.tl-tool-tip {
+  position: fixed;
+  z-index: 10000;
+  display: none;
+  box-sizing: border-box;
+  background: #000000D3;
+  color: #FFD038;
+  font-family: inherit;
+  font-weight: 400;
+  white-space: nowrap;
+  text-align: center;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  border-radius: 0;
+}
 .editor-page,
 .editor-page * {
   -webkit-user-select: none;

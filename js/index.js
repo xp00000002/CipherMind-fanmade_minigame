@@ -80,57 +80,53 @@
   applyGame();
 
   /* ---------- 主界面 ---------- */
-  // 开放房间注册表（本地模拟，供测试）：房主创建开放房间时写入，3 分钟过期；按游戏类型区分
-  var OPEN_ROOMS_KEY = 'cmchessOpenRooms';
-  function getOpenRooms() {
-    var list = [];
-    try {
-      var raw = JSON.parse(localStorage.getItem(OPEN_ROOMS_KEY));
-      if (raw && Array.isArray(raw)) list = raw;
-    } catch (e) {}
-    var now = Date.now();
-    var game = GAMES[gameIdx].game;
-    return list.filter(function (r) { return r && r.game === game && r.id && now - (r.ts || 0) < 180000; });
-  }
+  // 开放房间注册表：由服务器 /api/rooms 提供（见 js/rooms.js）
+  var roomsRequestSeq = 0;
   function renderOpenRooms() {
     var lobbyBody = document.getElementById('lobby-body');
     var prevScroll = lobbyBody ? lobbyBody.scrollTop : 0;
-    openRoomsEl.innerHTML = '';
-    getOpenRooms().forEach(function (room) {
-      var b = document.createElement('button');
-      b.className = 'room-btn open';
-      b.type = 'button';
-      var bar = document.createElement('span');
-      bar.className = 'room-bar';
-      var host = document.createElement('span');
-      host.className = 'room-host';
-      host.textContent = room.hostName || 'Player';
-      var rules = document.createElement('span');
-      rules.className = 'room-rules';
-      rules.textContent = (room.rules || 'Default') + (room.gameStarted ? ' | 已开局' : '');
-      var arrow = document.createElement('img');
-      arrow.className = 'room-arrow';
-      arrow.src = 'texture/rightarrow.png';
-      arrow.alt = '';
-      b.appendChild(bar);
-      b.appendChild(host);
-      b.appendChild(rules);
-      b.appendChild(arrow);
-      b.addEventListener('click', function () {
-        /* Freecell/Klondike 房间：以观战身份进入；Chess 已开局房间同；未开局的 Chess 房间以对局者进入 */
-        if (room.game === 'chess') {
-          location.href = 'game.html?mode=join&id=' + encodeURIComponent(room.id) + (room.gameStarted ? '&spec=1' : '');
-          return;
-        }
-        if (room.game === 'upgrade') {
-          location.href = 'upgrade.html?mode=join&id=' + encodeURIComponent(room.id) + (room.gameStarted ? '&started=1&spec=1' : '');
-          return;
-        }
-        location.href = GAMES[gameIdx].page + '?mode=join&id=' + encodeURIComponent(room.id) + '&spec=1' + (room.gameStarted ? '&started=1' : '');
+    var game = GAMES[gameIdx].game;
+    var seq = ++roomsRequestSeq;
+    if (!window.Rooms) { openRoomsEl.innerHTML = ''; return; }
+    Rooms.list(game).then(function (list) {
+      if (seq !== roomsRequestSeq) return;   /* 已切换游戏或有更新的请求 */
+      openRoomsEl.innerHTML = '';
+      list.forEach(function (room) {
+        var b = document.createElement('button');
+        b.className = 'room-btn open';
+        b.type = 'button';
+        var bar = document.createElement('span');
+        bar.className = 'room-bar';
+        var host = document.createElement('span');
+        host.className = 'room-host';
+        host.textContent = room.hostName || 'Player';
+        var rules = document.createElement('span');
+        rules.className = 'room-rules';
+        rules.textContent = (room.rules || 'Default') + (room.gameStarted ? ' | 已开局' : '');
+        var arrow = document.createElement('img');
+        arrow.className = 'room-arrow';
+        arrow.src = 'texture/rightarrow.png';
+        arrow.alt = '';
+        b.appendChild(bar);
+        b.appendChild(host);
+        b.appendChild(rules);
+        b.appendChild(arrow);
+        b.addEventListener('click', function () {
+          /* Freecell/Klondike 房间：以观战身份进入；Chess 已开局房间同；未开局的 Chess 房间以对局者进入 */
+          if (room.game === 'chess') {
+            location.href = 'game.html?mode=join&id=' + encodeURIComponent(room.id) + (room.gameStarted ? '&spec=1' : '');
+            return;
+          }
+          if (room.game === 'upgrade') {
+            location.href = 'upgrade.html?mode=join&id=' + encodeURIComponent(room.id) + (room.gameStarted ? '&started=1&spec=1' : '');
+            return;
+          }
+          location.href = GAMES[gameIdx].page + '?mode=join&id=' + encodeURIComponent(room.id) + '&spec=1' + (room.gameStarted ? '&started=1' : '');
+        });
+        openRoomsEl.appendChild(b);
       });
-      openRoomsEl.appendChild(b);
+      if (lobbyBody) lobbyBody.scrollTop = prevScroll;   /* 自动刷新时保持翻页位置 */
     });
-    if (lobbyBody) lobbyBody.scrollTop = prevScroll;   /* 自动刷新时保持翻页位置 */
   }
 
   // 选房界面自动刷新：其他标签页开房/改设置后无需手动刷新即可同步显示
@@ -493,19 +489,47 @@
     document.getElementById('campaign-stats-modal').classList.remove('hidden');
   }
   var askConfirmFn = null;
-  function openAsk(title, msg, fn) {
+  var askDelayTimer = null;
+  function clearAskDelay() {
+    if (askDelayTimer) { clearInterval(askDelayTimer); askDelayTimer = null; }
+    var yes = document.getElementById('ask-confirm-yes');
+    if (yes) { yes.disabled = false; yes.textContent = '确定'; }
+  }
+  function startAskDelay(seconds) {
+    var yes = document.getElementById('ask-confirm-yes');
+    var remain = Math.max(1, parseInt(seconds, 10) || 5);
+    yes.disabled = true;
+    yes.textContent = '确定(' + remain + 's)';
+    askDelayTimer = setInterval(function () {
+      remain--;
+      if (remain <= 0) {
+        clearInterval(askDelayTimer);
+        askDelayTimer = null;
+        yes.disabled = false;
+        yes.textContent = '确定';
+      } else {
+        yes.textContent = '确定(' + remain + 's)';
+      }
+    }, 1000);
+  }
+  function openAsk(title, msg, fn, delaySec) {
+    clearAskDelay();
     document.getElementById('ask-confirm-title').textContent = title;
     document.getElementById('ask-confirm-msg').textContent = msg;
     askConfirmFn = fn;
     document.getElementById('confirm-ask-modal').classList.remove('hidden');
+    if (delaySec > 0) startAskDelay(delaySec);
   }
   document.getElementById('ask-confirm-no').addEventListener('click', function () {
     askConfirmFn = null;
+    clearAskDelay();
     document.getElementById('confirm-ask-modal').classList.add('hidden');
   });
   document.getElementById('ask-confirm-yes').addEventListener('click', function () {
+    if (this.disabled) return;
     var fn = askConfirmFn;
     askConfirmFn = null;
+    clearAskDelay();
     document.getElementById('confirm-ask-modal').classList.add('hidden');
     if (fn) fn();
   });
@@ -516,7 +540,7 @@
       });
       openCampaignStats();
       showError('存档已删除');
-    });
+    }, 5);
   });
 
   function openTlSets(entry) {    tlEntry = entry;

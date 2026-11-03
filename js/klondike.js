@@ -174,26 +174,21 @@
     return '纸牌(Klondike)' + (fcSettings.emptyColK ? ' | 仅K空列' : '');
   }
   function registerOpenRoom(id, started) {
+    if (!id) return;
     var hostName = (Profile.get() || {}).name || 'Player';
-    var list = [];
-    try {
-      var raw = JSON.parse(localStorage.getItem('cmchessOpenRooms'));
-      if (raw && Array.isArray(raw)) list = raw;
-    } catch (e) {}
-    var now = Date.now();
-    list = list.filter(function (r) { return r && r.id !== id && now - (r.ts || 0) < 180000; });
-    list.push({ id: id, hostName: hostName, rules: openRoomSummary(), gameStarted: !!started, allowSpec: !!fcSettings.allowSpec, noChat: false, ts: now, game: 'klondike' });
-    try { localStorage.setItem('cmchessOpenRooms', JSON.stringify(list)); } catch (e) {}
+    Rooms.register({
+      id: id,
+      game: 'klondike',
+      hostName: hostName,
+      rules: openRoomSummary(),
+      gameStarted: !!started,
+      allowSpec: !!fcSettings.allowSpec,
+      noChat: false
+    });
   }
   function unregisterOpenRoom(id) {
     if (!id) return;
-    try {
-      var list = JSON.parse(localStorage.getItem('cmchessOpenRooms'));
-      if (Array.isArray(list)) {
-        list = list.filter(function (r) { return r && r.id !== id; });
-        localStorage.setItem('cmchessOpenRooms', JSON.stringify(list));
-      }
-    } catch (e) {}
+    Rooms.unregister(id);
   }
   function syncOpenRoom() {
     if (kdMode !== 'host' || !myPeerId) return;
