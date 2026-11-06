@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Battle · 斗地主</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261106e">
 </head>
 <body class="battle-page">
   <!-- 记牌器（页面上方固定条；Z / "显示记牌器(Z)"显示，X / "隐藏记牌器(X)"隐藏；观战者看牌后切换为看牌条） -->
@@ -31,6 +31,7 @@
     <aside class="panel left">
       <div class="status-box">
         <div id="bt-status" class="status">准备中…</div>
+        <div id="bt-status-timer" class="status bt-status-mult hidden"></div>
         <div id="bt-status-mult" class="status bt-status-mult"></div>
       </div>
       <div class="controls" id="bt-controls">
@@ -102,6 +103,14 @@
             <div class="setting-row toggle-row">
               <span class="setting-label">启用记牌器</span>
               <button type="button" class="toggle" id="bt-opt-counter"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">限制每步时间</span>
+              <button type="button" class="toggle" id="bt-opt-timelimit"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row slider-row" id="bt-time-row">
+              <span class="setting-label">每步时间（秒）</span>
+              <input type="number" id="bt-time-input" min="5" max="3600" value="15" class="num-input">
             </div>
             <div class="setting-row">
               <span class="setting-label">游戏模式</span>
@@ -203,7 +212,7 @@
               <span class="setting-label">出牌选项位置</span>
               <div class="sp-difficulty-switch" id="bt-actionpos-select">
                 <button type="button" class="switch-arrow" id="bt-actionpos-prev" aria-label="上一个"><img src="texture/lastchoice.png" alt="<"></button>
-                <span id="bt-actionpos-label" class="switch-label">左侧面板</span>
+                <span id="bt-actionpos-label" class="switch-label">牌桌下方</span>
                 <button type="button" class="switch-arrow" id="bt-actionpos-next" aria-label="下一个"><img src="texture/nextchoice.png" alt=">"></button>
               </div>
             </div>
@@ -317,6 +326,6 @@
   <script src="js/rooms.js?v=20261102"></script>
   <script src="js/profile.js"></script>
   <script src="js/modal-stack.js"></script>
-  <script src="js/battle.js?v=20261102"></script>
+  <script src="js/battle.js?v=20261106f"></script>
 </body>
 </html>

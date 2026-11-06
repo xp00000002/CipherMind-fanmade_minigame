@@ -61,8 +61,8 @@
     winScale: 1,        // 窗口缩放
     dblCascade: true,   // 双击自动置入置牌位
     transparent: true,  // 牌面透明
-    suitBorder: false,  // 边框提示花色
-    twoColor: false     // 双色模式
+    suitBorder: true,   // 边框提示花色（默认开启）
+    twoColor: true      // 双色模式（默认开启）
   };
   function loadSettings() {
     try {
@@ -77,7 +77,7 @@
   function saveSettings() {
     try { localStorage.setItem('fcSettings', JSON.stringify(fcSettings)); } catch (e) {}
   }
-  var gameSettings = { emptyColK: false };   // 新局生效的规则快照
+  var gameSettings = { emptyColK: false, allowSpec: false, open: false };   // 新局生效的规则/房间快照
   function isRed(card) { return card.suit === 'h' || card.suit === 'd'; }
 
   // 一叠牌是否为合法序列（从大到小、花色间隔）
@@ -204,9 +204,9 @@
   }
   function syncOpenRoom() {
     if (fcMode !== 'host' || !myPeerId) return;
-    if (fcSettings.open && fcSettings.allowSpec) registerOpenRoom(myPeerId, !!cols.length);
+    if (gameSettings.open && gameSettings.allowSpec) registerOpenRoom(myPeerId, !!cols.length);
     else unregisterOpenRoom(myPeerId);
-    Net.setAllowSpec(fcSettings.allowSpec);
+    Net.setAllowSpec(gameSettings.allowSpec);
   }
 
   function copyText(text, okMsg) {
@@ -334,20 +334,26 @@
     snapshotDeal();
   }
 
+  function snapshotGameSettings() {
+    gameSettings.emptyColK = fcSettings.emptyColK;
+    gameSettings.allowSpec = fcSettings.allowSpec;
+    gameSettings.open = fcSettings.open;
+  }
   function newGame() {
-    gameSettings.emptyColK = fcSettings.emptyColK;   /* 游戏设置：新局生效 */
+    snapshotGameSettings();   /* 游戏设置：新局生效 */
     resetTimer();
     dealPiles();
     sel = null;
     hideModal($('fc-win-modal'));
     hideModal($('fc-restart-modal'));
-    if (fcMode === 'host' && !fcSettings.allowSpec) Net.kickSpecs('房主已禁止观战');   /* 重开时禁止观战：观战者退出 */
+    if (fcMode === 'host' && !gameSettings.allowSpec) Net.kickSpecs('房主已禁止观战');   /* 重开时禁止观战：观战者退出 */
     render();
     broadcastState();   /* 房主：通知观战者新局局面 */
+    syncOpenRoom();     /* 房间设置：新局生效 */
   }
   function replayGame() {
     if (!initCols) return;
-    gameSettings.emptyColK = fcSettings.emptyColK;
+    snapshotGameSettings();
     resetTimer();
     cols = initCols.map(function (c) { return c.map(function (x) { return { suit: x.suit, rank: x.rank }; }); });
     freecells = initFreecells.slice();
@@ -355,8 +361,10 @@
     sel = null;
     hideModal($('fc-win-modal'));
     hideModal($('fc-restart-modal'));
+    if (fcMode === 'host' && !gameSettings.allowSpec) Net.kickSpecs('房主已禁止观战');
     render();
     broadcastState();
+    syncOpenRoom();
   }
   function showRestartModal() {
     hideModal($('fc-win-modal'));
@@ -1122,6 +1130,9 @@
     var locked = !fcSettings.allowSpec || isSpec;
     openEl.disabled = locked;
     openEl.classList.toggle('disabled', locked);
+    /* 不允许观战时不再显示“查看房间码”，底部只保留应用/设为默认；按本局已生效的设置判断 */
+    var viewCodeEl = $('btn-fc-view-code');
+    if (viewCodeEl) viewCodeEl.classList.toggle('hidden', !gameSettings.allowSpec);
   }
 
   var settingsBackup = null;
@@ -1138,7 +1149,7 @@
     saveSettings();
     settingsBackup = null;
     hideModal($('fc-settings-modal'));
-    syncOpenRoom();   /* 开放状态变化即时同步注册 */
+    /* 房间/观战设置同样新局生效，这里只保存，不立即同步开放房间 */
   }
   function cancelSettings() {
     if (settingsBackup) {
@@ -1150,7 +1161,7 @@
     hideModal($('fc-settings-modal'));
   }
   function resetSettings() {
-    var defaults = { emptyColK: false, allowSpec: false, open: false, timer: true, winScale: 1, dblCascade: true, transparent: true, suitBorder: false, twoColor: false };
+    var defaults = { emptyColK: false, allowSpec: false, open: false, timer: true, winScale: 1, dblCascade: true, transparent: true, suitBorder: true, twoColor: true };
     for (var k in fcSettings) fcSettings[k] = defaults[k];
     applyUiSettings();
     syncSettingsUI();

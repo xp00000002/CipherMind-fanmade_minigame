@@ -68,8 +68,9 @@
           if (!allowSpec) {
             c.send({ type: 'no-spec' });
             try { c.close(); } catch (e) {}
-          } else if (playerConn || handlers.soloSpec) {
-            /* soloSpec：单人游戏（如空当接龙）无对局者，观战者随时可加入 */
+          } else if (playerConn || handlers.soloSpec || handlers.allowWaitingSpec) {
+            /* Chess 通过 allowWaitingSpec 允许等待阶段观战；观战者不占对手名额。 */
+            c.__waitCanceled = false;   /* 主动观战：默认观战状态 */
             specConns.push(c);
             specNames[c.peer] = uniqueName(data.name, c.peer);
             c.send({ type: 'hello', role: 'spec', name: specNames[c.peer] });
@@ -81,8 +82,18 @@
           }
         } else {
           if (playerConn) {
-            c.send({ type: 'full' });
-            try { c.close(); } catch (e) {}
+            /* 对手位已满：允许等待观战（Chess），默认进入观战/取消状态。 */
+            if (allowSpec && handlers.allowWaitingSpec) {
+              c.__waitCanceled = true;   /* 满员普通加入：默认取消状态，按钮显示“观战” */
+              specConns.push(c);
+              specNames[c.peer] = uniqueName(data.name, c.peer);
+              c.send({ type: 'hello', role: 'spec', name: specNames[c.peer] });
+              if (handlers.onSpecJoin) handlers.onSpecJoin(c);
+              notifySpecCount();
+            } else {
+              c.send({ type: 'full' });
+              try { c.close(); } catch (e) {}
+            }
           } else {
             playerConn = c;
             playerName = uniqueName(data.name, c.peer);
@@ -133,6 +144,7 @@
         if (data && data.type === 'profile' && c === playerConn && data.profile) {
           if (!String(data.profile.name || '').trim()) data.profile.name = playerName || 'Player #2';
         }
+        if (data && specConns.indexOf(c) !== -1) data.fromSpec = c.peer;
         if (playerConn === c) broadcastToSpecs(data);
         if (handlers.onMessage) handlers.onMessage(data);
       }
@@ -241,6 +253,11 @@
     if (playerConn && playerConn.open) {
       // 房主：发给对局者，并同步给所有观战者
       playerConn.send(data);
+      broadcastToSpecs(data);
+      return;
+    }
+    if (handlers.mode === 'host') {
+      /* 等待中的房主即使还没有对手，也要让已在房间的观战者收到大厅状态。 */
       broadcastToSpecs(data);
       return;
     }

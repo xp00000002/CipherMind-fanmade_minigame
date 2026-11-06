@@ -121,7 +121,9 @@
             location.href = 'upgrade.html?mode=join&id=' + encodeURIComponent(room.id) + (room.gameStarted ? '&started=1&spec=1' : '');
             return;
           }
-          location.href = GAMES[gameIdx].page + '?mode=join&id=' + encodeURIComponent(room.id) + '&spec=1' + (room.gameStarted ? '&started=1' : '');
+          /* Compare / Battle：未开局的开放房间按普通玩家进入；已开局才自动观战 */
+          location.href = GAMES[gameIdx].page + '?mode=join&id=' + encodeURIComponent(room.id) +
+            (room.gameStarted ? '&started=1&spec=1' : '');
         });
         openRoomsEl.appendChild(b);
       });

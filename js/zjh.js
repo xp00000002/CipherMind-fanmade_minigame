@@ -60,7 +60,8 @@
   function saveCreateSettings() {
     try { localStorage.setItem('zjhCreateSettings', JSON.stringify(settings)); } catch (e) {}
   }
-  var players = [];      // 大厅：{id, name, ready, host}
+  var players = [];      // 大厅：{id, name, ready, host, spec}
+  var MAX_PLAYERS = 8;   // 炸金花最多 8 名实际玩家；观战者不占名额
   var game = null;       // 对局：{order:[id], turn, bet, pot, phase, players:[{id,name,score,cards,seen,folded,bet,allin,hasSeen}], timerEnd}
   var myIndex = -1;      // 我在 game.players 中的下标
   var readyState = false;
@@ -142,11 +143,24 @@
       var used = {};
       players.forEach(function (p) { used[p.name] = true; });
       if (used[nm]) { var n = 2; while (used[nm + ' #' + n]) n++; nm = nm + ' #' + n; }
-      /* 游戏未开始时加入 = 正常玩家；对局已开始 = 观战者 */
-      players.push({ id: connId(c), name: nm, ready: false, host: false, spec: !!game });
+      /* 对局中、或主动选择观战的玩家 = 观战者；等待中的普通玩家仍占实际玩家名额 */
+      if (game || data.spec) {
+        players.push({ id: connId(c), name: nm, ready: false, host: false, spec: true });
+        c.send({ t: 'profiles', avatars: avatars });
+        hostBroadcastLobby();
+        if (game) c.send({ t: 'state', game: game, settings: settings, spec: true });
+        return;
+      }
+      if (activePlayers().length >= MAX_PLAYERS) {
+        /* 人数已足：普通加入默认进入“取消”状态，不占实际玩家名额，按钮显示“观战”。 */
+        players.push({ id: connId(c), name: nm, ready: false, host: false, spec: false, overflow: true });
+        c.send({ t: 'profiles', avatars: avatars });
+        hostBroadcastLobby();
+        return;
+      }
+      players.push({ id: connId(c), name: nm, ready: false, host: false, spec: false });
       c.send({ t: 'profiles', avatars: avatars });   /* 新成员同步所有自定义头像 */
       hostBroadcastLobby();
-      if (game) c.send({ t: 'state', game: game, settings: settings });   /* 对局中：立即下发当前状态 */
       return;
     }
     if (data.t === 'profile') {
@@ -158,7 +172,21 @@
     }
     if (data.t === 'ready') {
       var p = findPlayer(connId(c));
-      if (p) { p.ready = !!data.v; hostBroadcastLobby(); }
+      if (p && !p.host && !game) {
+        p.ready = !!data.v;
+        if (typeof data.spec === 'boolean') p.spec = !!data.spec;
+        if (p.spec) {
+          p.ready = false;
+          p.overflow = false;
+        } else if (p.ready) {
+          p.overflow = false;
+        } else {
+          p.overflow = players.filter(function (x) {
+            return x.id !== p.id && !x.spec && !x.overflow;
+          }).length >= MAX_PLAYERS;
+        }
+        hostBroadcastLobby();
+      }
       return;
     }
     if (data.t === 'chat') {
@@ -178,6 +206,20 @@
   var handlersChat = null;
   function findPlayer(id) {
     for (var i = 0; i < players.length; i++) if (players[i].id === id) return players[i];
+    return null;
+  }
+  function activePlayers() {
+    return players.filter(function (p) { return !p.spec && !p.overflow; });
+  }
+  function readyPlayerCount() {
+    var n = 0;
+    activePlayers().forEach(function (p) { if (p.host || p.ready) n++; });
+    return n;
+  }
+  function selfLobbyPlayer() {
+    for (var i = 0; i < players.length; i++) {
+      if (players[i].id === myId || players[i].id === selfPeerId) return players[i];
+    }
     return null;
   }
   function removePlayer(id, data) {
@@ -286,7 +328,12 @@
       if (data.settings) settings = data.settings;   /* 同步房主开局设置（含坐庄） */
       var me = null;
       for (var i = 0; i < players.length; i++) if (players[i].id === myId || players[i].id === selfPeerId) me = players[i];
-      if (me) myName = me.name;
+      if (me) {
+        myName = me.name;
+        if (!isHost) isSpec = !!me.spec;
+      } else if (data.spec) {
+        isSpec = true;
+      }
       openState = !!data.open;   /* 同步房主开放状态 */
       renderLobby();
       return;
@@ -294,10 +341,15 @@
     if (data.t === 'state') {
       game = data.game;
       if (data.settings) settings = data.settings;
+      if (data.spec) isSpec = true;
       myIndex = -1;
       for (var i = 0; i < game.players.length; i++) if (game.players[i].id === myId || game.players[i].id === selfPeerId) { myIndex = i; break; }
       hideModal($('zjh-wait-modal'));
       renderGame();
+      return;
+    }
+    if (data.t === 'full') {
+      showPrompt('无法加入', data.reason || '房间已满', function () { location.href = 'index.html'; }, null, '返回主界面', null);
       return;
     }
     if (data.t === 'result') {
@@ -328,8 +380,8 @@
       name.className = 'zjh-pname';
       name.textContent = p.name;
       card.appendChild(name);
-      /* 名字过长时动态缩小字号以装下；可用宽度需避开右侧图标（host/ready）区域 */
-      var hasIcon = !!(p.host || p.ready);
+      /* 名字过长时动态缩小字号以装下；可用宽度需避开右侧图标（host/ready/spec）区域 */
+      var hasIcon = !!(p.host || p.ready || p.spec);
       var avail = card.clientWidth * (hasIcon ? (1 - 0.048 - 0.07 - 0.065) : 0.87);
       var fs = parseFloat(getComputedStyle(name).fontSize) || 14;
       var shrinkGuard = 0;
@@ -338,33 +390,34 @@
         name.style.fontSize = fs + 'px';
         shrinkGuard++;
       }
-      if (p.host) {
+      var icon = null;
+      if (p.host) icon = 'texture/host.png';
+      else if (p.spec) icon = 'texture/spectator.png';
+      else if (p.ready) icon = 'texture/ready.png';
+      if (icon) {
         var img = document.createElement('img');
         img.className = 'zjh-picon';
-        img.src = 'texture/host.png';
+        img.src = icon;
         card.appendChild(img);
-      } else if (p.ready) {
-        var img2 = document.createElement('img');
-        img2.className = 'zjh-picon';
-        img2.src = 'texture/ready.png';
-        card.appendChild(img2);
       }
       body.appendChild(card);
     });
     if (isHost) {
       var start = $('btn-zjh-start');
       start.classList.remove('hidden');
-      start.disabled = players.filter(function (p) { return !p.spec; }).length < 2;
+      start.disabled = activePlayers().length < 2 ||
+        activePlayers().length > MAX_PLAYERS ||
+        activePlayers().some(function (p) { return !p.host && !p.ready; });
       $('btn-zjh-ready').classList.add('hidden');
     } else {
       $('btn-zjh-start').classList.add('hidden');
-      if (isSpec) {
-        $('btn-zjh-ready').classList.add('hidden');   /* 观战者无需准备 */
-      } else {
-        var rd = $('btn-zjh-ready');
-        rd.classList.remove('hidden');
-        rd.textContent = readyState ? '取消准备' : '准备';
-      }
+      var rd = $('btn-zjh-ready');
+      rd.classList.remove('hidden');
+      var me = selfLobbyPlayer();
+      if (isSpec || (me && me.spec)) rd.textContent = '取消';
+      else if ((me && me.ready) || readyState) rd.textContent = '观战';
+      else rd.textContent = (me && me.overflow) ? '观战' :
+        (readyPlayerCount() < MAX_PLAYERS ? '准备' : '观战');
     }
   }
 
@@ -387,6 +440,8 @@
     var disabled = !settings.timeLimit;
     input.disabled = disabled;
     input.classList.toggle('disabled', disabled);
+    /* 与 chess 一致：关闭“限制每步时间”时隐藏整行秒数设置 */
+    if (input.parentNode) input.parentNode.classList.toggle('hidden', disabled);
   }
   function setToggle(el, on) {
     var img = el.querySelector('img');
@@ -419,7 +474,7 @@
     saveCreateSettings();   /* 记住本次开局设置 */
     if (isHost) {
       if (settings.dealer) {
-        players.forEach(function (p) { p.score = settings.startScore * (players.length - 1); });
+        activePlayers().forEach(function (p) { p.score = settings.startScore * (activePlayers().length - 1); });
         /* 庄家分数在开局时按人数结算 */
       }
       if (openState && myId) registerOpenRoom(myId, true);   /* 设置变更后刷新开放房间摘要 */
@@ -445,21 +500,33 @@
   });
   $('btn-zjh-start').addEventListener('click', function () {
     if (!isHost) return;
-    var ps = players.filter(function (p) { return !p.spec; });
+    var ps = activePlayers();
     if (ps.length < 2) { toast('至少需要两名玩家'); return; }
+    if (ps.length > MAX_PLAYERS) { toast('玩家数量超过上限'); return; }
     for (var i = 0; i < ps.length; i++) if (!ps[i].host && !ps[i].ready) { toast('有玩家未准备'); return; }
     startRound();
   });
   $('btn-zjh-ready').addEventListener('click', function () {
-    readyState = !readyState;
-    sendMy({ t: 'ready', v: readyState });
+    if (isHost || game) return;
+    var me = selfLobbyPlayer();
+    var spec = !!(isSpec || (me && me.spec));
+    var ready = !!(me && me.ready);
+    var next;
+    if (spec) next = { ready: false, spec: false };
+    else if (ready) next = { ready: false, spec: true };
+    else if (!(me && me.overflow) && readyPlayerCount() < MAX_PLAYERS) next = { ready: true, spec: false };
+    else next = { ready: false, spec: true };
+    if (me) { me.ready = next.ready; me.spec = next.spec; }
+    isSpec = next.spec;
+    readyState = next.ready;
+    sendMy({ t: 'ready', v: next.ready, spec: next.spec });
     renderLobby();
   });
 
   /* 房主兜底：定期检查是否只剩房主一人（连接断开事件可能丢失） */
   setInterval(function () {
     if (!isHost || !game || game.phase !== 'bet' || game.animating) return;
-    if (players.length <= 1) {
+    if (activePlayers().length <= 1) {
       var anyAlive = false;
       game.players.forEach(function (p) { if (!p.host && !p.folded) anyAlive = true; });
       if (anyAlive) {
@@ -533,7 +600,7 @@
 
   /* ---------- 对局逻辑（房主权威） ---------- */
   function startRound() {
-    var pList = players.filter(function (p) { return !p.spec; }).map(function (p) { return { id: p.id, name: p.name, host: p.host }; });
+    var pList = players.filter(function (p) { return !p.spec && !p.overflow; }).map(function (p) { return { id: p.id, name: p.name, host: p.host }; });
     var order = shuffle(pList.map(function (p) { return p.id; }));
     if (settings.dealer) {
       order = order.filter(function (id) { return id !== 'host'; });
@@ -542,7 +609,7 @@
     var gamePlayers = pList.map(function (p) {
       return {
         id: p.id, name: p.name, host: p.host,
-        score: p.host && settings.dealer ? settings.startScore * (players.length - 1) : settings.startScore,
+        score: p.host && settings.dealer ? settings.startScore * (pList.length - 1) : settings.startScore,
         cards: [], seen: false, folded: false, bet: 0, allin: false
       };
     });
@@ -1104,7 +1171,11 @@
   }
   function broadcastGame() {
     hideModal($('zjh-wait-modal'));
-    sendAll({ t: 'state', game: game, settings: settings });
+    conns.forEach(function (c) {
+      if (!c.open) return;
+      var p = findPlayer(connId(c));
+      c.send({ t: 'state', game: game, settings: settings, spec: !!(p && (p.spec || p.overflow)) });
+    });
     if (isHost) {
       myIndex = -1;
       for (var i = 0; i < game.players.length; i++) if (game.players[i].id === 'host') { myIndex = i; break; }
@@ -1306,6 +1377,21 @@
     }
     return '<span class="avatar-glyph">' + (glyph || '') + '</span>';
   }
+  /* 名片名称过长时先缩小字号（最小原字号 50%），仍放不下时由 CSS 省略号处理 */
+  function fitCardNames(scope) {
+    if (!scope) return;
+    var names = scope.querySelectorAll('.player-card .pname');
+    for (var i = 0; i < names.length; i++) {
+      var el = names[i];
+      el.style.fontSize = '';
+      var base = parseFloat(getComputedStyle(el).fontSize) || 15;
+      var size = base;
+      while (el.scrollWidth > el.clientWidth && size > base * 0.5) {
+        size -= 0.5;
+        el.style.fontSize = size + 'px';
+      }
+    }
+  }
   function renderPlayerPanel() {
     playerPanelEl.innerHTML = '';
     if (!game) return;
@@ -1353,6 +1439,7 @@
       card.appendChild(info);
       playerPanelEl.appendChild(card);
     });
+    fitCardNames(playerPanelEl);
   }
   function renderControls() {
     var me = myGamePlayer();
@@ -1531,10 +1618,24 @@
     game.players.forEach(function (p) { if (p.id === key.slice(6)) tp = p; });
     return tp ? tp.name : '玩家';
   }
-  function openChat() {
+  function zjhChatOtherIds() {
+    var me = myGamePlayer();
+    return game ? game.players.filter(function (p) { return p.id !== (me ? me.id : null); }).map(function (p) { return p.id; }) : [];
+  }
+  function openChat(selectAll) {
     if (!game) return;
+    if (isSpec && specViewing) { toast('看牌后本轮内不能发送消息'); return; }
+    if (!$('chat-modal').classList.contains('hidden')) {
+      if (selectAll) {
+        chatSel = {};
+        zjhChatOtherIds().forEach(function (id) { chatSel[id] = true; });
+        renderChatTargets();
+      }
+      return;
+    }
     chatPath = [];
     chatSel = {};
+    if (selectAll) zjhChatOtherIds().forEach(function (id) { chatSel[id] = true; });
     $('chat-input').value = '';
     renderChatTargets();
     renderChatPreset();
@@ -1551,6 +1652,14 @@
     if (isSpec && specViewing) { toast('看牌后本轮内不能发送消息'); return; }
     openChat();
   });
+  /* T 打开聊天，Alt+T 打开并全选收件人（同 chess） */
+  window.addEventListener('keydown', function (e) {
+    if (e.key !== 't' && e.key !== 'T') return;
+    var tag = e.target && e.target.tagName;
+    if ((tag === 'INPUT' || tag === 'TEXTAREA') && !e.altKey) return;
+    e.preventDefault();
+    openChat(!!e.altKey);
+  }, true);
   $('chat-cancel').addEventListener('click', function () { hideModal($('chat-modal')); });
   $('chat-send').addEventListener('click', function () {
     var text = $('chat-input').value.trim();
@@ -1790,7 +1899,11 @@
   document.documentElement.style.setProperty('--panel-scale', (zjhSettings.panelScale || 1).toFixed(2));
   applyZjhLayout();
   arrangePanels();
-  window.addEventListener('resize', function () { arrangePanels(); applyZjhLayout(); });
+  window.addEventListener('resize', function () {
+    arrangePanels();
+    applyZjhLayout();
+    fitCardNames(playerPanelEl);
+  });
   /* 未开局时隐藏两侧面板与牌桌区域 */
   function setPanelsVisible(v) {
     document.querySelectorAll('.game-layout > .panel, .board-area, .top-panel, .bottom-panel').forEach(function (el) {
@@ -1807,6 +1920,7 @@
     showGamePanels();
     origRenderGame();
     if (typeof applyZjhLayout === 'function') applyZjhLayout();   /* 面板内容渲染后按内容重新计算行高 */
+    fitCardNames(playerPanelEl);
   };
   if (isHost) {
     initHost();

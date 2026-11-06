@@ -5146,3 +5146,8 @@ h1, h2, h3, b, strong { font-weight: 400; }
   pointer-events: none;
 }
 #export-modal .act-row.act-top { margin-top: calc(var(--sb) / 3 - var(--sb) * 1.5); }
+/* 导出条件：添加按钮下的分割线，并收紧它与第一个条件之间的距离 */
+#export-modal .export-add-divider {
+  margin: -0.2em 0;
+  border-top-width: 0.0688em;
+}

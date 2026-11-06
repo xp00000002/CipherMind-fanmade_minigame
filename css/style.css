@@ -2460,7 +2460,12 @@ body.chess-pre-game .game-layout { display: none; }
   padding: calc(var(--sb) / 3);
   gap: var(--zgap);
   --zgap: calc(var(--sb) / 3);
+  overflow-y: auto;          /* 房间人数超过一屏（尤其 >8 人）时可滚动 */
+  overflow-x: hidden;
+  scrollbar-width: none;
+  touch-action: pan-y;
 }
+.zjh-wait-body::-webkit-scrollbar { display: none; }
 .zjh-pcard {
   width: auto;
   height: auto;
@@ -2756,7 +2761,6 @@ body.chess-pre-game .game-layout { display: none; }
   overflow-y: auto;
   min-height: 0;
 }
-.bt-player-list .player-card.bt-landlord { border-color: #FFD038; }
 .bt-role-text { color: #95791F; font-size: 13px; min-height: 16px; }
 .bt-landlord .bt-role-text { color: #FFD038; }
 .bt-count-text { color: var(--muted); font-size: 13px; min-height: 16px; }
@@ -3698,6 +3702,8 @@ body.chess-pre-game .game-layout { display: none; }
   height: calc(var(--bt-c) * 1.54385 * 0.8);
 }
 .upgrade-page .bt-player-list { gap: 8px; }
+.upgrade-page .up-spec-home-wrap { margin-top: 8px; }
+.upgrade-page .up-spec-home-wrap .btn { width: 100%; }
 .upgrade-page .player-card .bt-role-text { font-size: 12px; color: #FFD038; }
 .upgrade-page .player-card .bt-score { font-size: 12px; color: #95791F; }
 @media (max-width: 900px) {
@@ -3774,6 +3780,14 @@ body.chess-pre-game .game-layout { display: none; }
 .upgrade-page .up-self-stats {
   margin-top: auto;
   flex: 0 0 auto;
+}
+/* 点击统计信息切换升级分数表 */
+.upgrade-page #up-stats {
+  cursor: pointer;
+  user-select: none;
+}
+.upgrade-page #up-stats.up-stats-upgrade .tl-stat-row > span:last-child {
+  white-space: nowrap;
 }
 /* Upgrade 查看记录 */
 .upgrade-page .up-records-empty {

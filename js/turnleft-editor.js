@@ -1975,11 +1975,13 @@
     if (!solveResult || !solveResult.ok) return;
     /* 默认一个“限制步数”条件：最小值=理论最小步数，默认不限最大值 */
     exportConds = [{ type: 0, minstep: solveResult.dist, maxstep: null, _lim: false }];
-    renderCondList($('export-cond-body'), exportConds, '限制条件', false);
+    /* 导出条件允许“限制开局朝向”（type=5），并在开启限制最大值时自动用最小值填充。 */
+    renderCondList($('export-cond-body'), exportConds, '限制条件', true, true);
     showModal($('export-modal'));
   }
-  function buildExportText() {
+  function buildExportText(compact) {
     if (!solveResult || !solveResult.ok) return;
+    if (compact === undefined) compact = true;   /* 默认精简格式（兼容调试接口） */
     var conds = [];
     for (var ci = 0; ci < exportConds.length; ci++) {
       var cc = collectCondFrom(exportConds, ci);
@@ -1995,14 +1997,18 @@
     });
     if (mn > mx) { toast('限制条件中的最小步数超过最大步数'); return; }
     var FACE_BIT = [2, 1, 8, 4];   /* SV_DIR 下标 -> 朝向位（右/上/左/下） */
-    function condsPass(total, red, left, portal, faceDirIdx) {
+    function condsPass(total, red, left, portal, faceDirIdx, firstDirIdx) {
       for (var i2 = 0; i2 < conds.length; i2++) {
         var c = conds[i2];
         if (c.type === 1) {
           if (!(c.facing & FACE_BIT[faceDirIdx])) return false;
           continue;
         }
-        if (c.type === 5) continue;   /* 导出限制不含开局朝向 */
+        if (c.type === 5) {
+          /* 限制开局朝向：取第一步的实际方向。 */
+          if (firstDirIdx < 0 || !(c.facing & FACE_BIT[firstDirIdx])) return false;
+          continue;
+        }
         var v = c.type === 2 ? left : c.type === 3 ? red : c.type === 4 ? portal : total;
         if (v < c.minstep) return false;
         if (c.maxstep !== null && c.maxstep !== undefined && v > c.maxstep) return false;
@@ -2061,7 +2067,7 @@
     void endKey;
     var nodesVisited = 0, searchTruncated = false;
     var NODE_BUDGET = 20000000;   /* 搜索量上限，超出则截断（保证不卡死） */
-    function explore(x, y, face, tasks, reds, lefts, portals, steps) {
+    function explore(x, y, face, tasks, reds, lefts, portals, steps, firstDir) {
       if (solutions.length >= SOLVE_CAP) return;
       nodesVisited++;
       if (nodesVisited > NODE_BUDGET) { searchTruncated = true; return; }
@@ -2099,14 +2105,17 @@
         var total = steps + 1;
         var rec = { left: face >= 0 && d !== face ? 1 : 0, red: meta.red ? 1 : 0, portal: tp ? 1 : 0, zh: D.zh };
         var lefts2 = lefts + rec.left, portals2 = portals + rec.portal;
+        var firstDir2 = steps === 0 ? d : firstDir;
         if (won) {
-          if (total >= mn && total <= mx && condsPass(total, popcount(reds2), lefts2, portals2, d)) {
+          if (total >= mn && total <= mx && condsPass(total, popcount(reds2), lefts2, portals2, d, firstDir2)) {
             var solLines = pathLines.slice(1).concat([line]);
+            var solDirs = pathSteps.map(function (s) { return s.zh; }).concat([D.zh]);
             var sigKey = solLines.join('\n');
             if (!seenSig[sigKey]) {
               seenSig[sigKey] = true;
               solutions.push({
                 lines: solLines,
+                dirs: solDirs,
                 len: total,
                 red: popcount(reds2),
                 left: lefts2,
@@ -2125,13 +2134,13 @@
         visitedPath[vkey] = true;
         pathLines.push(line);
         pathSteps.push(rec);
-        explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total);
+        explore(fx, fy, d, tasks2, reds2, lefts2, portals2, total, firstDir2);
         pathLines.pop();
         pathSteps.pop();
         delete visitedPath[vkey];
       }
     }
-    explore(sx, sy, -1, 0, 0, 0, 0, 0);
+    explore(sx, sy, -1, 0, 0, 0, 0, 0, -1);
 
     var out = [];
     out.push('关卡：' + (currentItem.name || 'level'));
@@ -2143,7 +2152,8 @@
     out.push('');
     solutions.forEach(function (sol, i) {
       out.push('===== 解法 ' + (i + 1) + '（' + sol.len + ' 步） =====');
-      sol.lines.forEach(function (ln) { out.push(ln); });
+      if (compact) out.push(sol.dirs.join(' '));
+      else sol.lines.forEach(function (ln) { out.push(ln); });
       out.push('经过红线：' + sol.red);
       out.push('左转次数：' + sol.left);
       out.push('传送门使用次数：' + sol.portal);
@@ -2153,11 +2163,18 @@
     return { text: out.join('\n'), count: solutions.length, solutions: solutions };
   }
   function doExportSolutions() {
-    var res = buildExportText();
+    var res = buildExportText(true);
+    if (!res) return;
+    hideModal($('export-modal'));
+    downloadFile(sanitizeName(currentItem ? currentItem.name : 'level') + '.solutions-compact.txt', res.text);
+    toast('已导出 ' + res.count + ' 个精简解法');
+  }
+  function doExportFullSolutions() {
+    var res = buildExportText(false);
     if (!res) return;
     hideModal($('export-modal'));
     downloadFile(sanitizeName(currentItem ? currentItem.name : 'level') + '.solutions.txt', res.text);
-    toast('已导出 ' + res.count + ' 个解法');
+    toast('已导出 ' + res.count + ' 个完整解法');
   }
 
   $('btn-solve').addEventListener('click', verifySolvable);
@@ -2165,6 +2182,7 @@
   $('btn-solve-export').addEventListener('click', openExportModal);
   $('btn-exp-cancel').addEventListener('click', function () { hideModal($('export-modal')); });
   $('btn-exp-ok').addEventListener('click', doExportSolutions);
+  $('btn-exp-full').addEventListener('click', doExportFullSolutions);
 
   /* ==================== 编辑任务集（任务 = 多个条件，条件之间为“与”关系） ==================== */
   var TASK_TYPES = ['限制步数', '限制通关时玩家朝向', '限制左转次数', '限制走过的红线数量', '限制传送门使用次数', '限制开局朝向'];
@@ -2339,16 +2357,21 @@
     renderCondList($('task-detail-body'), workingTask || [], '任务类型', true);
   }
   /* 条件编辑器（任务编辑 / 导出解法共用；allowStartFacing=false 时不提供“限制开局朝向”） */
-  function renderCondList(body, arr, typeLabel, allowStartFacing) {
+  function renderCondList(body, arr, typeLabel, allowStartFacing, autoMax) {
     body.innerHTML = '';
     var typeCount = allowStartFacing === false ? 5 : TASK_TYPES.length;
     /* 添加条件：独立一行（顶部） */
     var addRow = mkActRow('添加条件', function () {
       arr.push(newDefaultCond());
-      renderCondList(body, arr, typeLabel, allowStartFacing);
+      renderCondList(body, arr, typeLabel, allowStartFacing, autoMax);
     });
     addRow.classList.add('act-top');
     body.appendChild(addRow);
+    if (body.id === 'export-cond-body') {
+      var addDivider = document.createElement('hr');
+      addDivider.className = 'setting-divider export-add-divider';
+      body.appendChild(addDivider);
+    }
     if (!arr.length) {
       var empty = document.createElement('div');
       empty.className = 'task-cond-empty';
@@ -2367,7 +2390,7 @@
       /* 删除条件：独立整行 */
       blk.appendChild(mkActRow('删除条件', function () {
         arr.splice(i, 1);
-        renderCondList(body, arr, typeLabel, allowStartFacing);
+        renderCondList(body, arr, typeLabel, allowStartFacing, autoMax);
       }));
       /* 任务类型行 */
       var typeRow = document.createElement('div');
@@ -2399,7 +2422,7 @@
           } else {
             arr[i]._lim = arr[i]._lim === undefined ? true : arr[i]._lim;
           }
-          renderCondList(body, arr, typeLabel, allowStartFacing);
+          renderCondList(body, arr, typeLabel, allowStartFacing, autoMax);
         });
         return b;
       }
@@ -2434,7 +2457,10 @@
           var cw = arr[i];
           cw._lim = on;
           if (!on) cw.maxstep = '';
-          renderCondList(body, arr, typeLabel, allowStartFacing);
+          else if (autoMax && cw.minstep !== undefined && cw.minstep !== null && String(cw.minstep).trim() !== '') {
+            cw.maxstep = cw.minstep;   /* 导出时开启限制最大值：默认填入最小值 */
+          }
+          renderCondList(body, arr, typeLabel, allowStartFacing, autoMax);
         });
         tRow.appendChild(tL);
         tRow.appendChild(tg);
@@ -2467,8 +2493,16 @@
         inp.value = value === undefined || value === null ? '' : value;
         if (disabled) inp.disabled = true;
         inp.addEventListener('input', function () {
-          if (key === 'min') arr[i].minstep = inp.value;
-          else arr[i].maxstep = inp.value;
+          if (key === 'min') {
+            arr[i].minstep = inp.value;
+            if (autoMax && arr[i]._lim) {
+              arr[i].maxstep = inp.value;
+              var inputs = parent.querySelectorAll('input');
+              if (inputs[1]) inputs[1].value = inp.value;
+            }
+          } else {
+            arr[i].maxstep = inp.value;
+          }
         });
         row.appendChild(l);
         row.appendChild(inp);
