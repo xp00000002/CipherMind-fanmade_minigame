@@ -527,7 +527,6 @@ input[type="checkbox"] {
   justify-content: center;
   background: transparent;   /* 背景由 body 提供（个人设置） */
 }
-body.bg-image .start-wrap { background: rgba(0, 0, 0, 0.25); }
 .start-page {
   --sb: calc(55vw * 0.0155);   /* 边框厚度 = 窗口总宽(55vw)的 1.55% */
   width: 55vw;
