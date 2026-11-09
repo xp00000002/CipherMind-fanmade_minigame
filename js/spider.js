@@ -68,6 +68,8 @@
     transparent: true,      // 牌面透明
     suitBorder: true,       // 边框提示花色（默认开启）
     twoColor: false,        // 双色模式
+    dynamicOverlap: true,   // 动态调整重叠牌（默认开启）
+    opBottom: 'normal',     // 操作区底部边界：normal / lower / bottom
     undo: { single: false, two: true, four: true }   // 各难度是否允许撤销
   };
   function loadSettings() {
@@ -415,9 +417,10 @@
       var col = cols[c];
       var n = col.length;
       if (n < 13) continue;
-      var ok = col[n - 13].rank === 13;
+      /* 整段 K-A 必须均已翻开；未翻开的牌不能参与收牌 */
+      var ok = col[n - 13].up && col[n - 13].rank === 13;
       for (var k = n - 13 + 1; ok && k < n; k++) {
-        if (col[k].suit !== col[k - 1].suit || col[k].rank !== col[k - 1].rank - 1) ok = false;
+        if (!col[k].up || col[k].suit !== col[k - 1].suit || col[k].rank !== col[k - 1].rank - 1) ok = false;
       }
       if (ok && col[n - 1].rank === 1) {
         var colEl = tableEl.children[c];
@@ -667,7 +670,17 @@
   }
   function fitColumns() {
     var avail = tableEl.clientHeight;
-    if (!avail) return;
+    var mode = spSettings.opBottom || 'normal';
+    if (mode === 'lower' || mode === 'bottom') {
+      var bar = document.querySelector('.sp-bar');
+      var sample = tableEl.querySelector('.fc-card');
+      if (bar && sample) {
+        var sampleH = sample.getBoundingClientRect().height;
+        var boundary = bar.getBoundingClientRect().bottom - (mode === 'lower' ? sampleH * 0.6 : 0);
+        avail = boundary - tableEl.getBoundingClientRect().top;
+      }
+    }
+    if (!(avail > 0)) return;
     for (var c = 0; c < 10; c++) {
       var col = tableEl.children[c];
       if (!col) continue;
@@ -914,24 +927,35 @@
 
   /* ---------- 通关 ---------- */
   function checkWin() {
-    if (done.length >= 8) showModal($('fc-win-modal'));
+    if (done.length >= 8) {
+      stopTimer();
+      showModal($('fc-win-modal'));
+    }
   }
 
   /* ---------- 计时 ---------- */
   var gameStartTime = 0;
   var timerTick = null;
+  var timerStopped = false;
   function updateTimer() {
     if (!timerEl) return;
     var s = Math.max(0, Math.round((Date.now() - gameStartTime) / 1000));
     timerEl.textContent = s + 's';
   }
   function resetTimer() {
+    timerStopped = false;
     gameStartTime = Date.now();
     if (timerTick) { clearInterval(timerTick); timerTick = null; }
     if (timerEl) timerEl.classList.toggle('hidden', !spSettings.timer);
     if (!spSettings.timer) return;
     updateTimer();
     timerTick = setInterval(updateTimer, 1000);
+  }
+  function stopTimer() {
+    if (timerStopped) return;
+    timerStopped = true;
+    if (timerTick) { clearInterval(timerTick); timerTick = null; }
+    updateTimer();
   }
 
   /* ---------- 新局 / 重玩 / 胜利 ---------- */
@@ -987,6 +1011,21 @@
   }
   var diffOrder = ['single', 'two', 'four'];
   var diffNames = { single: '单色', two: '双色', four: '四色' };
+  var opBottomOrder = ['normal', 'lower', 'bottom'];
+  var opBottomNames = { normal: '正常', lower: '偏下', bottom: '触底' };
+  function syncOpBottom() {
+    var idx = opBottomOrder.indexOf(spSettings.opBottom);
+    if (idx < 0) { idx = 0; spSettings.opBottom = opBottomOrder[0]; }
+    var lbl = $('sp-opbottom-label');
+    if (lbl) lbl.textContent = opBottomNames[spSettings.opBottom];
+  }
+  function cycleOpBottom(dir) {
+    var idx = opBottomOrder.indexOf(spSettings.opBottom);
+    if (idx < 0) idx = 0;
+    spSettings.opBottom = opBottomOrder[(idx + dir + opBottomOrder.length) % opBottomOrder.length];
+    syncOpBottom();
+    applyUiSettings();
+  }
   function syncDifficulty() {
     var idx = diffOrder.indexOf(spSettings.difficulty);
     if (idx < 0) { idx = 0; spSettings.difficulty = diffOrder[0]; }
@@ -1009,6 +1048,9 @@
     page.classList.toggle('fc-solid-cards', !spSettings.transparent);
     page.classList.toggle('fc-suit-border', spSettings.suitBorder && !spSettings.twoColor);
     page.classList.toggle('fc-two-color-border', spSettings.suitBorder && spSettings.twoColor);
+    page.classList.toggle('sp-op-lower', spSettings.opBottom === 'lower');
+    page.classList.toggle('sp-op-bottom', spSettings.opBottom === 'bottom');
+    if (window.CardOverlapHover) CardOverlapHover.refresh();
     document.documentElement.style.setProperty('--fc-win-scale', spSettings.winScale);
     /* 计时等游戏设置不在设置面板即时生效，统一由新局/重玩时应用 */
     render();
@@ -1038,12 +1080,13 @@
   function syncSettingsUI() {
     var map = [
       ['opt-allow-spec', 'allowSpec'], ['opt-open', 'open'], ['opt-timer', 'timer'],
-      ['opt-transparent', 'transparent'], ['opt-suit-border', 'suitBorder'], ['opt-two-color', 'twoColor']
+      ['opt-transparent', 'transparent'], ['opt-suit-border', 'suitBorder'], ['opt-two-color', 'twoColor'], ['opt-overlap', 'dynamicOverlap']
     ];
     map.forEach(function (pair) { setToggle($(pair[0]), spSettings[pair[1]]); });
     if (winScaleSlider) winScaleSlider.value = Math.round(spSettings.winScale * 100);
     if (winScaleLabel) winScaleLabel.textContent = Math.round(spSettings.winScale * 100) + '%';
     syncDifficulty();
+    syncOpBottom();
     syncOpenLock();
   }
   function syncOpenLock() {
@@ -1082,7 +1125,7 @@
     hideModal($('fc-settings-modal'));
   }
   function resetSettings() {
-    var defaults = { difficulty: 'single', allowSpec: false, open: false, timer: true, winScale: 1, transparent: true, suitBorder: true, twoColor: false, undo: { single: false, two: true, four: true } };
+    var defaults = { difficulty: 'single', allowSpec: false, open: false, timer: true, winScale: 1, transparent: true, suitBorder: true, twoColor: false, dynamicOverlap: true, opBottom: 'normal', undo: { single: false, two: true, four: true } };
     for (var k in spSettings) spSettings[k] = defaults[k];
     applyUiSettings();
     syncSettingsUI();
@@ -1090,7 +1133,7 @@
   }
   [
     ['opt-allow-spec', 'allowSpec', false], ['opt-open', 'open', false], ['opt-timer', 'timer', false],
-    ['opt-transparent', 'transparent', true], ['opt-suit-border', 'suitBorder', true], ['opt-two-color', 'twoColor', true]
+    ['opt-transparent', 'transparent', true], ['opt-suit-border', 'suitBorder', true], ['opt-two-color', 'twoColor', true], ['opt-overlap', 'dynamicOverlap', true]
   ].forEach(function (pair) {
     var el = $(pair[0]);
     if (!el) return;
@@ -1105,6 +1148,11 @@
   document.querySelectorAll('#sp-difficulty .switch-arrow').forEach(function (b) {
     b.addEventListener('click', function () {
       cycleDifficulty(b.id === 'sp-diff-next' ? 1 : -1);
+    });
+  });
+  document.querySelectorAll('#sp-opbottom-select .switch-arrow').forEach(function (b) {
+    b.addEventListener('click', function () {
+      cycleOpBottom(b.id === 'sp-opbottom-next' ? 1 : -1);
     });
   });
   var optUndo = $('opt-undo');
@@ -1182,6 +1230,7 @@
   initNet();
   if (!isSpec) newGame();
   applyUiSettings();
+  if (window.CardOverlapHover) CardOverlapHover.init({ enabled: function () { return !!spSettings.dynamicOverlap; } });
   syncOpenRoom();
 
   window.addEventListener('pagehide', function () {

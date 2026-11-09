@@ -1225,7 +1225,7 @@ input[type="range"]::-moz-range-thumb {
   --sb: calc(82vw * 0.0155);   /* 边框厚度 = 窗口总宽(82vw)的 1.55% */
   --fc-c: calc(6.6cqw * 1.2 * 1.2);     /* 下方列牌宽度：原 1.2 倍再 ×1.2 */
   --fc-top-c: calc(6.6cqw * 1.2 * 1.1); /* 上方空当/置牌位：原 1.2 倍再 ×1.1 */
-  --fc-step: calc(var(--fc-c) * 0.3);   /* 默认叠牌步距（列放不下时由 JS 按列动态压缩） */
+  --fc-step: calc(var(--fc-c) * 1.54385 * 0.2);   /* 默认重叠 80% 牌高（列放不下时由 JS 按列动态压缩） */
   width: calc(82vw * var(--fc-win-scale, 1));   /* 窗口缩放（内部 cqw 控件随之等比缩放） */
   max-width: 100vw;
   aspect-ratio: 16 / 11;
@@ -2068,6 +2068,18 @@ h1, h2, h3, b, strong { font-weight: 400; }
   flex: 1;
   min-height: 0;
   gap: calc(var(--fc-c) * 0.12);
+}
+/* 操作区底部边界模式：偏下/触底时允许牌组向下越界并盖住底部区域 */
+.sp-page.sp-op-lower .sp-table,
+.sp-page.sp-op-bottom .sp-table {
+  position: relative;
+  z-index: 4;
+  overflow: visible;
+}
+.sp-page.sp-op-lower .sp-bar,
+.sp-page.sp-op-bottom .sp-bar {
+  position: relative;
+  z-index: 2;
 }
 .sp-col {
   justify-content: flex-start;
@@ -4097,3 +4109,8 @@ body.upgrade-page.up-spec .bt-doll[data-seat="1"] { top: calc(100% + var(--bt-h)
 /* 未开局：上下方面板同样隐藏 */
 .upgrade-page.up-pre-game .top-panel,
 .upgrade-page.up-pre-game .bottom-panel { display: none !important; }
+
+/* ---------- 动态调整重叠牌动画 ---------- */
+.fc-overlap-anim .fc-card {
+  transition: margin-left 0.18s ease, margin-top 0.18s ease, transform 0.12s ease;
+}

@@ -39,6 +39,7 @@
     transparent: true,  // 牌面透明
     suitBorder: true,   // 边框提示花色（默认开启）
     twoColor: true,     // 双色模式（默认开启）
+    dynamicOverlap: true,  // 动态调整重叠牌（默认开启）
     showMinMoves: true  // 显示最短步数
   };
   function loadSettings() {
@@ -773,7 +774,7 @@
       if (!card) { col.style.removeProperty('--fc-step'); continue; }
       var cardH = card.getBoundingClientRect().height;
       if (!cardH) continue;
-      var defStep = cardH * 0.3 / 1.54385;
+      var defStep = cardH * 0.2;   /* 默认重叠 80% 牌高 */
       var fitStep = (avail - cardH) / (len - 1);
       if (fitStep >= defStep) {
         col.style.removeProperty('--fc-step');
@@ -1237,25 +1238,36 @@
   function checkWin() {
     var done = 0;
     for (var i = 0; i < 4; i++) if (fnds[i].length === 13) done++;
-    if (done === 4) showModal($('fc-win-modal'));
+    if (done === 4) {
+      stopTimer();
+      showModal($('fc-win-modal'));
+    }
   }
 
   /* ---------- 计时 ---------- */
   var timerEl = document.getElementById('fc-timer');
   var gameStartTime = 0;
   var timerTick = null;
+  var timerStopped = false;
   function updateTimer() {
     if (!timerEl) return;
     var s = Math.max(0, Math.round((Date.now() - gameStartTime) / 1000));
     timerEl.textContent = s + 's';
   }
   function resetTimer() {
+    timerStopped = false;
     gameStartTime = Date.now();
     if (timerTick) { clearInterval(timerTick); timerTick = null; }
     if (timerEl) timerEl.classList.toggle('hidden', !fcSettings.timer);
     if (!fcSettings.timer) return;
     updateTimer();
     timerTick = setInterval(updateTimer, 1000);
+  }
+  function stopTimer() {
+    if (timerStopped) return;
+    timerStopped = true;
+    if (timerTick) { clearInterval(timerTick); timerTick = null; }
+    updateTimer();
   }
 
   /* ---------- 设置弹窗 ---------- */
@@ -1275,6 +1287,7 @@
     page.classList.toggle('fc-solid-cards', !fcSettings.transparent);
     page.classList.toggle('fc-suit-border', fcSettings.suitBorder && !fcSettings.twoColor);
     page.classList.toggle('fc-two-color-border', fcSettings.suitBorder && fcSettings.twoColor);
+    if (window.CardOverlapHover) CardOverlapHover.refresh();
     document.documentElement.style.setProperty('--fc-win-scale', fcSettings.winScale);
     /* 计时不在设置面板即时生效，统一由新局/重玩时应用 */
     var mmEl = $('kd-min-moves');
@@ -1308,7 +1321,7 @@
     var map = [
       ['opt-empty-col-k', 'emptyColK'], ['opt-allow-spec', 'allowSpec'], ['opt-open', 'open'],
       ['opt-timer', 'timer'], ['opt-show-min-moves', 'showMinMoves'], ['opt-dbl-cascade', 'dblCascade'], ['opt-transparent', 'transparent'],
-      ['opt-suit-border', 'suitBorder'], ['opt-two-color', 'twoColor']
+      ['opt-suit-border', 'suitBorder'], ['opt-two-color', 'twoColor'], ['opt-overlap', 'dynamicOverlap']
     ];
     map.forEach(function (pair) { setToggle($(pair[0]), fcSettings[pair[1]]); });
     if (winScaleSlider) winScaleSlider.value = Math.round(fcSettings.winScale * 100);
@@ -1352,7 +1365,7 @@
     hideModal($('fc-settings-modal'));
   }
   function resetSettings() {
-    var defaults = { emptyColK: true, allowSpec: false, open: false, timer: true, winScale: 1, dblCascade: true, transparent: true, suitBorder: true, twoColor: true, showMinMoves: true };
+    var defaults = { emptyColK: true, allowSpec: false, open: false, timer: true, winScale: 1, dblCascade: true, transparent: true, suitBorder: true, twoColor: true, dynamicOverlap: true, showMinMoves: true };
     for (var k in fcSettings) fcSettings[k] = defaults[k];
     applyUiSettings();
     syncSettingsUI();
@@ -1362,7 +1375,7 @@
   [
     ['opt-empty-col-k', 'emptyColK', false], ['opt-allow-spec', 'allowSpec', false], ['opt-open', 'open', false],
     ['opt-timer', 'timer', false], ['opt-show-min-moves', 'showMinMoves', true], ['opt-dbl-cascade', 'dblCascade', true], ['opt-transparent', 'transparent', true],
-    ['opt-suit-border', 'suitBorder', true], ['opt-two-color', 'twoColor', true]
+    ['opt-suit-border', 'suitBorder', true], ['opt-two-color', 'twoColor', true], ['opt-overlap', 'dynamicOverlap', true]
   ].forEach(function (pair) {
     var el = $(pair[0]);
     if (!el) return;
@@ -1433,6 +1446,7 @@
   initNet();
   if (!isSpec) newGame();
   applyUiSettings();
+  if (window.CardOverlapHover) CardOverlapHover.init({ enabled: function () { return !!fcSettings.dynamicOverlap; } });
   syncOpenRoom();
 
   window.addEventListener('pagehide', function () {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>空当接龙 · Freecell</title>
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=20261109b">
 </head>
 <body>
   <div class="fc-wrap">
@@ -78,6 +78,10 @@
             <div class="setting-row toggle-row">
               <span class="setting-label">双色模式</span>
               <button type="button" class="toggle" id="opt-two-color"><img src="texture/toggleoff.png" alt="off"></button>
+            </div>
+            <div class="setting-row toggle-row">
+              <span class="setting-label">动态调整重叠牌</span>
+              <button type="button" class="toggle" id="opt-overlap"><img src="texture/toggleoff.png" alt="off"></button>
             </div>
           </div>
           <div class="settings-scrollbar" id="fc-settings-scrollbar">
@@ -165,7 +169,8 @@
   <script src="js/net.js?v=20261106e"></script>
   <script src="js/profile.js"></script>
   <script src="js/modal-stack.js"></script>
-  <script src="js/freecell.js?v=20261106f"></script>
+  <script src="js/card-overlap-hover.js?v=20261109b"></script>
+  <script src="js/freecell.js?v=20261109d"></script>
   <!-- 消息提示层 -->
   <div id="chat-layer" class="chat-layer"></div>
 

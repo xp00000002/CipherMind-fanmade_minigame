@@ -2797,7 +2797,7 @@
   });
 
   /* ---------- 设置 ---------- */
-  var btSettings = { tableScale: 1, panelScale: 1, handScale: 1, transparent: true, suitBorder: false, twoColor: false, counterScale: 100, actionPos: 'bottom', hideChat: false };
+  var btSettings = { tableScale: 1, panelScale: 1, handScale: 1, transparent: true, suitBorder: false, twoColor: false, dynamicOverlap: true, counterScale: 100, actionPos: 'bottom', hideChat: false };
   function loadBtSettings() {
     try {
       var s = JSON.parse(localStorage.getItem('btSettings'));
@@ -2861,6 +2861,7 @@
     setToggle($('bt-opt-transparent'), btSettings.transparent);
     setToggle($('bt-opt-suitborder'), btSettings.suitBorder);
     setToggle($('bt-opt-twocolor'), btSettings.twoColor);
+    setToggle($('bt-opt-overlap'), btSettings.dynamicOverlap);
     setToggle($('bt-opt-hidechat'), btSettings.hideChat);
     $('bt-counter-scale').value = btSettings.counterScale;
     $('bt-counter-scale-label').textContent = btSettings.counterScale + '%';
@@ -2872,6 +2873,12 @@
   $('bt-opt-transparent').addEventListener('click', function () { btSettings.transparent = !toggleIsOn(this); setToggle(this, btSettings.transparent); applyCardSettings(); saveBtSettings(); });
   $('bt-opt-suitborder').addEventListener('click', function () { btSettings.suitBorder = !toggleIsOn(this); setToggle(this, btSettings.suitBorder); applyCardSettings(); saveBtSettings(); });
   $('bt-opt-twocolor').addEventListener('click', function () { btSettings.twoColor = !toggleIsOn(this); setToggle(this, btSettings.twoColor); applyCardSettings(); renderGame(); saveBtSettings(); });
+  $('bt-opt-overlap').addEventListener('click', function () {
+    btSettings.dynamicOverlap = !toggleIsOn(this);
+    setToggle(this, btSettings.dynamicOverlap);
+    saveBtSettings();
+    if (window.CardOverlapHover) CardOverlapHover.refresh();
+  });
   $('bt-opt-hidechat').addEventListener('click', function () { btSettings.hideChat = !toggleIsOn(this); setToggle(this, btSettings.hideChat); saveBtSettings(); });
   /* 记牌器大小：50% = 原始大小（1 倍）不变，区间 50%-150%；玩家默认值 100% */
   function applyCounterScale() {
@@ -3168,6 +3175,7 @@
   applyCounterScale();
   Profile.applyBackground();
   loadBtSettings();
+  if (window.CardOverlapHover) CardOverlapHover.init({ enabled: function () { return !!btSettings.dynamicOverlap; } });
   applyCardSettings();
   tableEl.style.transform = 'scale(' + (btSettings.tableScale || 1) + ')';
   document.documentElement.style.setProperty('--panel-scale', (btSettings.panelScale || 1).toFixed(2));

@@ -122,7 +122,7 @@
   $('btn-up-prompt-home').addEventListener('click', function () { location.href = 'index.html'; });
 
   /* ---------- 本地界面设置 ---------- */
-  var uiSettings = { tableScale: 1, handScale: 1, panelScale: 1, transparent: true, suitBorder: true, twoColor: false, actionPos: 'bottom', handSort: 'typeDesc', counterScale: 100 };
+  var uiSettings = { tableScale: 1, handScale: 1, panelScale: 1, transparent: true, suitBorder: true, twoColor: false, dynamicOverlap: true, actionPos: 'bottom', handSort: 'typeDesc', counterScale: 100 };
   try {
     var su = JSON.parse(localStorage.getItem('upSettings'));
     if (su) for (var sk in uiSettings) if (su[sk] !== undefined) uiSettings[sk] = su[sk];
@@ -138,6 +138,7 @@
       el.classList.toggle('fc-suit-border', uiSettings.suitBorder && !uiSettings.twoColor);
       el.classList.toggle('fc-two-color-border', uiSettings.suitBorder && uiSettings.twoColor);
     });
+    if (window.CardOverlapHover) CardOverlapHover.refresh();
     applyTableLayout();
     renderGame();
   }
@@ -3507,6 +3508,7 @@
     setToggle($('up-opt-transparent'), uiSettings.transparent);
     setToggle($('up-opt-suitborder'), uiSettings.suitBorder);
     setToggle($('up-opt-twocolor'), uiSettings.twoColor);
+    setToggle($('up-opt-overlap'), uiSettings.dynamicOverlap);
     actionPosLabel();
     handSortLabel();
   }
@@ -3552,6 +3554,7 @@
   $('up-opt-transparent').addEventListener('click', function () { uiSettings.transparent = !uiSettings.transparent; setToggle(this, uiSettings.transparent); saveUiSettings(); applyUiSettings(); });
   $('up-opt-suitborder').addEventListener('click', function () { uiSettings.suitBorder = !uiSettings.suitBorder; setToggle(this, uiSettings.suitBorder); saveUiSettings(); applyUiSettings(); });
   $('up-opt-twocolor').addEventListener('click', function () { uiSettings.twoColor = !uiSettings.twoColor; setToggle(this, uiSettings.twoColor); saveUiSettings(); applyUiSettings(); });
+  $('up-opt-overlap').addEventListener('click', function () { uiSettings.dynamicOverlap = !uiSettings.dynamicOverlap; setToggle(this, uiSettings.dynamicOverlap); saveUiSettings(); applyUiSettings(); });
   /* 出牌选项位置：左侧面板 / 牌桌下方 */
   function cycleActionPos(dir) {
     var idx = UP_APOS.indexOf(uiSettings.actionPos);
@@ -3960,6 +3963,8 @@
       state: function () { return { game: game, session: session, players: players, mySeat: mySeat }; }
     };
   }
+
+  if (window.CardOverlapHover) CardOverlapHover.init({ enabled: function () { return !!uiSettings.dynamicOverlap; } });
 
   /* 房主：渲染循环（状态变更后调用）已由 sendAllState 触发 */
 })();
