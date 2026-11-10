@@ -1236,6 +1236,12 @@
   window.addEventListener('pagehide', function () {
     unregisterOpenRoom(myPeerId);
   });
+  if (window.SettingsShortcuts) {
+    SettingsShortcuts.attach({
+      page: 'spider',
+      after: function () { saveSettings(); }
+    });
+  }
 })();
 
 

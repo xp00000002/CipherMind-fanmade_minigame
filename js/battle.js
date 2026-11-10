@@ -3175,6 +3175,11 @@
   applyCounterScale();
   Profile.applyBackground();
   loadBtSettings();
+  setToggle($('bt-opt-transparent'), btSettings.transparent);
+  setToggle($('bt-opt-suitborder'), btSettings.suitBorder);
+  setToggle($('bt-opt-twocolor'), btSettings.twoColor);
+  setToggle($('bt-opt-overlap'), btSettings.dynamicOverlap);
+  setToggle($('bt-opt-hidechat'), btSettings.hideChat);
   if (window.CardOverlapHover) CardOverlapHover.init({ enabled: function () { return !!btSettings.dynamicOverlap; } });
   applyCardSettings();
   tableEl.style.transform = 'scale(' + (btSettings.tableScale || 1) + ')';
@@ -3208,5 +3213,9 @@
     if (!joinStarted) showWait();
   } else {
     location.href = 'index.html';
+  }
+
+  if (window.SettingsShortcuts) {
+    SettingsShortcuts.attach({ page: 'battle' });
   }
 })();

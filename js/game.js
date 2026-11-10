@@ -2072,5 +2072,8 @@
     showModal(createModal);
     updateCreateScrollbar();
   }
+  if (window.SettingsShortcuts) {
+    SettingsShortcuts.attach({ page: 'chess' });
+  }
 })();
 

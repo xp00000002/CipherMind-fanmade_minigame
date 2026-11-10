@@ -1264,6 +1264,12 @@
   window.addEventListener('pagehide', function () {
     unregisterOpenRoom(myPeerId);
   });
+  if (window.SettingsShortcuts) {
+    SettingsShortcuts.attach({
+      page: 'freecell',
+      after: function () { saveSettings(); }
+    });
+  }
 })();
 
 

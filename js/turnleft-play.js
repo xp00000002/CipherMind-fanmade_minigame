@@ -1874,6 +1874,9 @@
     playUnordered = setData[0] === 'unordered';
     setData = setData.filter(function (x) { return x && typeof x === 'object'; });
   }
+  if (window.SettingsShortcuts) {
+    SettingsShortcuts.attach({ page: 'turnleft-play' });
+  }
   if (!setData || !Array.isArray(setData) || !setData.length) {
     $('tl-status').textContent = '未找到关卡集数据';
     return;

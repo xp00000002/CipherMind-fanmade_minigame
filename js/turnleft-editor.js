@@ -2748,6 +2748,10 @@
       data: function () { return { stage: stage, vertices: vertices, segs: segs, currentItem: currentItem }; }
     };
   }
+
+  if (window.SettingsShortcuts) {
+    SettingsShortcuts.attach({ page: 'turnleft-editor' });
+  }
 })();
 
 

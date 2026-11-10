@@ -1206,7 +1206,7 @@
     return null;
   }
   /* ---------- 设置 ---------- */
-  var zjhSettings = { twoColor: false, transparent: true, suitBorder: false, tableScale: 1, panelScale: 1 };
+  var zjhSettings = { twoColor: false, transparent: true, suitBorder: false, tableScale: 1, panelScale: 1, hideChat: false };
   function loadZjhSettings() {
     try {
       var s = JSON.parse(localStorage.getItem('zjhSettings'));
@@ -1522,6 +1522,7 @@
 
   /* ---------- 聊天（预设消息） ---------- */
   function showChatMsg(data) {
+    if (zjhSettings.hideChat) return;
     var msg = document.createElement('div');
     msg.className = 'chat-msg show';
     var t = document.createElement('span');
@@ -1711,12 +1712,14 @@
     setToggle($('zjh-opt-transparent'), zjhSettings.transparent);
     setToggle($('zjh-opt-suitborder'), zjhSettings.suitBorder);
     setToggle($('zjh-opt-twocolor'), zjhSettings.twoColor);
+    setToggle($('zjh-opt-hidechat'), zjhSettings.hideChat);
     showModal($('settings-modal'));
     styleSlider();
   });
   $('zjh-opt-transparent').addEventListener('click', function () { zjhSettings.transparent = !toggleIsOn(this); setToggle(this, zjhSettings.transparent); applyCardSettings(); saveZjhSettings(); });
   $('zjh-opt-suitborder').addEventListener('click', function () { zjhSettings.suitBorder = !toggleIsOn(this); setToggle(this, zjhSettings.suitBorder); applyCardSettings(); saveZjhSettings(); });
   $('zjh-opt-twocolor').addEventListener('click', function () { zjhSettings.twoColor = !toggleIsOn(this); setToggle(this, zjhSettings.twoColor); applyCardSettings(); renderGame(); saveZjhSettings(); });
+  $('zjh-opt-hidechat').addEventListener('click', function () { zjhSettings.hideChat = !toggleIsOn(this); setToggle(this, zjhSettings.hideChat); saveZjhSettings(); });
   /* 滑动条样式（同 chess）：轨道 62:1（宽:高），滑块宽=轨道 2.5 倍、高=7 倍，金色填充截止于滑块 */
   function styleSlider() {
     var sliders = [$('zjh-scale'), $('zjh-panel-scale')].filter(Boolean);
@@ -1862,6 +1865,10 @@
   /* ---------- 启动 ---------- */
   Profile.applyBackground();
   loadZjhSettings();
+  setToggle($('zjh-opt-transparent'), zjhSettings.transparent);
+  setToggle($('zjh-opt-suitborder'), zjhSettings.suitBorder);
+  setToggle($('zjh-opt-twocolor'), zjhSettings.twoColor);
+  setToggle($('zjh-opt-hidechat'), zjhSettings.hideChat);
   applyCardSettings();
   
   
@@ -1930,6 +1937,9 @@
     if (!joinStarted) showWait();   /* 已开局房间直接进入对局界面，不显示等待大厅 */
   } else {
     location.href = 'index.html';
+  }
+  if (window.SettingsShortcuts) {
+    SettingsShortcuts.attach({ page: 'zjh' });
   }
 })();
 

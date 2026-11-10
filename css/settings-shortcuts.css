@@ -1,0 +1,64 @@
+/* 快捷键设置按钮与快捷键设置弹窗 */
+.scs-open-btn {
+  left: auto !important;
+  right: 0;
+  z-index: 3;
+}
+
+/* 手机/平板布局隐藏快捷键设置入口；桌面端保留 */
+@media (max-width: 900px) {
+  .scs-open-btn {
+    display: none !important;
+  }
+}
+
+.scs-back {
+  z-index: 3;
+}
+
+.scs-shortcut-row {
+  cursor: default;
+  gap: 0.5em;
+}
+
+.scs-shortcut-label {
+  flex: 1 1 0;
+  min-width: 0;
+  color: #FFD038;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scs-combo {
+  flex: 0 0 50%;
+  width: 50%;
+  max-width: 50%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #95791F;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.scs-combo:focus {
+  outline: none;
+}
+
+.scs-combo.scs-conflict {
+  color: #E53D3D;
+}
+
+/* 选中态优先于冲突态，便于正在输入的快捷键保持高亮 */
+.scs-combo.scs-selected {
+  color: #FFD038;
+}

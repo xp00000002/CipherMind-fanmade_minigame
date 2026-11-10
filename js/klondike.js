@@ -1452,6 +1452,12 @@
   window.addEventListener('pagehide', function () {
     unregisterOpenRoom(myPeerId);
   });
+  if (window.SettingsShortcuts) {
+    SettingsShortcuts.attach({
+      page: 'klondike',
+      after: function () { saveSettings(); }
+    });
+  }
 })();
 
 
