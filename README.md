@@ -15,3 +15,9 @@ CipherMind fanmade minigame是一个模仿Pigeon Games的多人解谜游戏《Ci
 本项目的小游戏在玩法上与《CipherMind》无相似或重合，部分素材使用了《CipherMind》素材的重绘版本，其余素材为自主设计。
 
 `banks`文件夹储存了经过验证的Klondike Solitaire与Spider Solitaire双色难度的可解牌局；`turnleft-levels`文件夹储存了Turn Left的内置关卡。
+
+## 开源协议
+
+本项目采用 **MIT License** 开源，完整许可文本见 [LICENSE](LICENSE)。
+
+第三方组件、素材和求解器的来源与许可信息见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
